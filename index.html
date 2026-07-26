@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="生き物記録">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.svg">
+    <title>生き物記録帳 - 入力</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+
+        .navbar button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .navbar button:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .main-container {
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section h2 {
+            margin: 0 0 24px 0;
+            color: #333;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-section input[type="text"],
+        .form-section input[type="date"],
+        .form-section textarea {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-section input[type="text"]:focus,
+        .form-section input[type="date"]:focus,
+        .form-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-section textarea {
+            min-height: 100px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .facility-type {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .facility-type label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f5f5f5;
+            transition: all 0.3s ease;
+        }
+
+        .facility-type label:hover {
+            background: #eee;
+        }
+
+        .facility-type label:has(input:checked) {
+            background: #667eea;
+            color: white;
+        }
+
+        .facility-type input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: -10px;
+            margin-bottom: 16px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 15px auto;
+                padding: 0 10px;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .navbar {
+                padding: 10px;
+            }
+
+            .navbar button {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ナビゲーションバー -->
+    <nav class="navbar">
+        <button onclick="location.href='list.html'">📋 記録一覧</button>
+    </nav>
+
+    <div class="main-container">
+        <!-- 入力フォーム -->
+        <div class="form-section">
+            <h2>📝 生き物記録入力</h2>
+            <form id="animalForm">
+                <input type="hidden" id="entryId">
+                
+                <label>施設の種類 *</label>
+                <div class="facility-type">
+                    <label>
+                        <input type="radio" name="facilityType" value="動物園" checked> 動物園
+                    </label>
+                    <label>
+                        <input type="radio" name="facilityType" value="水族館"> 水族館
+                    </label>
+                </div>
+                
+                <label for="facilityNames">施設名（複数可）*</label>
+                <textarea id="facilityNames" placeholder="例：&#10;上野動物園&#10;多摩動物公園&#10;&#10;※複数の施設を入力する場合は、1行に1つずつ記入してください。" required></textarea>
+                <p class="hint">※複数の施設を入力する場合は、1行に1つずつ記入してください。同じ動物を違う施設で見た場合などに便利です。</p>
+                
+                <label for="visitDate">訪問日 *</label>
+                <input type="date" id="visitDate" required>
+                
+                <label for="animalNames">生き物の名前（複数可）*</label>
+                <textarea id="animalNames" placeholder="例：&#10;パンダ&#10;ライオン&#10;ゾウ&#10;&#10;※1行に1つずつ入力してください" required></textarea>
+                <p class="hint">※複数の生き物を入力する場合は、1行に1つずつ記入してください。</p>
+                
+                <label for="order">目（もく）</label>
+                <input type="text" id="order" list="orderList" placeholder="入力または選択">
+                <datalist id="orderList"></datalist>
+                
+                <label for="family">科</label>
+                <input type="text" id="family" list="familyList" placeholder="入力または選択">
+                <datalist id="familyList"></datalist>
+                
+                <label for="notes">備考</label>
+                <textarea id="notes" placeholder="気づいたこと、感想など"></textarea>
+                
+                <div class="button-group">
+                    <button type="submit" id="submitBtn" class="btn-primary">一括追加する</button>
+                    <button type="button" id="cancelBtn" class="btn-secondary" style="display: none;" onclick="cancelEdit()">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="auth.js"></script>
+    <script src="cloud-sync.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then((registration) => {
+                    console.log('ServiceWorker registered:', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('ServiceWorker registration failed:', error);
+                });
+        }
+    </script>
+    <script>
+        // URLパラメータから編集データを読み込む
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('editId')) {
+                document.getElementById('entryId').value = params.get('editId');
+                document.getElementById('animalNames').value = params.get('animalName');
+                document.getElementById('order').value = params.get('order') || '';
+                document.getElementById('family').value = params.get('family') || '';
+                
+                // 施設タイプのラジオボタン
+                const facilityType = params.get('facilityType');
+                if (facilityType) {
+                    const radios = document.querySelectorAll('input[name="facilityType"]');
+                    radios.forEach(radio => {
+                        radio.checked = radio.value === facilityType;
+                    });
+                }
+                
+                document.getElementById('facilityNames').value = params.get('facilityName');
+                document.getElementById('visitDate').value = params.get('visitDate');
+                document.getElementById('notes').value = params.get('notes') || '';
+                
+                document.getElementById('submitBtn').textContent = '更新する';
+                document.getElementById('cancelBtn').style.display = 'inline-block';
+                
+                // ページタイトルを変更
+                document.title = '生き物記録帳 - 編集';
+                document.querySelector('.form-section h2').textContent = '📝 生き物記録編集';
+            }
+        });
+    </script>
+</body>
+</html>
