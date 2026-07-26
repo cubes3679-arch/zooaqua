@@ -373,83 +373,116 @@
                 min-width: 100%;
             }
 
-            /* スマホ用テーブル - カード形式で表示 */
+            /* スマホ用テーブル - カード形式で表示（コンパクト版） */
             .master-table {
                 display: block;
-                font-size: 14px;
+                font-size: 13px;
             }
 
             .master-table thead {
-                display: none; /* ヘッダーを非表示 */
+                display: none;
             }
 
             .master-table tbody {
                 display: flex;
                 flex-direction: column;
-                gap: 16px;
+                gap: 12px;
             }
 
             .master-table tr {
-                display: block;
-                background: #f0f4ff; /* 薄い青 */
-                border-radius: 16px;
-                padding: 20px;
-                box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                background: #f0f4ff;
+                border-radius: 12px;
+                padding: 14px 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
                 position: relative;
             }
 
             .master-table td {
                 display: block;
-                padding: 6px 0;
-                border-bottom: 1px solid #e0e6f0;
-                font-size: 14px;
-                line-height: 1.5;
+                padding: 2px 0;
+                font-size: 13px;
+                line-height: 1.4;
             }
 
-            .master-table td:last-child {
-                border-bottom: none;
-                padding-top: 16px;
-                margin-top: 4px;
+            /* 1行目：生き物の名前（全幅） */
+            .master-table td:first-child {
+                grid-column: 1 / -1;
+                padding-bottom: 6px;
+                border-bottom: 1px solid #d0daf0;
+                margin-bottom: 2px;
+            }
+
+            /* 2行目〜4行目：目、科、施設の種類 */
+            .master-table td:nth-child(2),
+            .master-table td:nth-child(3),
+            .master-table td:nth-child(4) {
+                /* 左右に並ぶ */
+            }
+
+            /* 5行目：施設名（全幅） */
+            .master-table td:nth-child(5) {
+                grid-column: 1 / -1;
+            }
+
+            /* 6行目：訪問日 */
+            .master-table td:nth-child(6) {
+                /* 左右に並ぶ */
+            }
+
+            /* 7行目：備考（全幅） */
+            .master-table td:nth-child(7) {
+                grid-column: 1 / -1;
+            }
+
+            /* 8行目：アクション（全幅） */
+            .master-table td:nth-child(8) {
+                grid-column: 1 / -1;
+                padding-top: 8px;
+                border-top: 1px solid #d0daf0;
+                margin-top: 2px;
             }
 
             /* 各セルにラベルを追加 */
             .master-table td::before {
                 content: attr(data-label);
-                font-weight: 700;
+                font-weight: 600;
                 color: #667eea;
-                font-size: 12px;
-                display: block;
-                margin-bottom: 4px;
+                font-size: 11px;
+                display: inline-block;
+                margin-right: 4px;
             }
 
             .master-table td:first-child::before {
-                font-size: 11px;
-                color: #999;
-                font-weight: 500;
+                content: '';
+                display: none;
             }
 
             .master-table td:first-child strong {
-                font-size: 17px;
+                font-size: 16px;
                 color: #333;
+                font-weight: 700;
             }
 
             .action-buttons {
                 justify-content: flex-end;
-                gap: 10px;
+                gap: 8px;
             }
 
             .action-buttons button {
-                padding: 10px 20px;
-                font-size: 14px;
-                border-radius: 20px;
-                min-width: 70px;
+                padding: 8px 16px;
+                font-size: 13px;
+                border-radius: 16px;
+                min-width: 60px;
                 text-align: center;
             }
 
             .badge {
-                font-size: 12px;
-                padding: 4px 10px;
-                border-radius: 14px;
+                font-size: 11px;
+                padding: 3px 8px;
+                border-radius: 12px;
             }
 
             .pagination {
@@ -458,15 +491,15 @@
             }
 
             .pagination button {
-                padding: 8px 12px;
-                font-size: 13px;
-                min-width: 40px;
+                padding: 6px 10px;
+                font-size: 12px;
+                min-width: 36px;
             }
 
             .entry-count {
-                font-size: 14px;
+                font-size: 13px;
                 text-align: left;
-                margin-bottom: 16px;
+                margin-bottom: 12px;
                 font-weight: 500;
             }
 
