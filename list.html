@@ -344,24 +344,24 @@
 
         @media (max-width: 768px) {
             .main-container {
-                margin: 10px auto;
-                padding: 0 12px;
+                margin: 8px auto;
+                padding: 0 10px;
             }
 
             .form-section,
             .filter-section {
-                padding: 16px;
+                padding: 14px;
                 border-radius: 12px;
             }
 
             .navbar {
-                padding: 10px;
-                gap: 8px;
+                padding: 8px;
+                gap: 6px;
             }
 
             .navbar button {
-                padding: 10px 16px;
-                font-size: 14px;
+                padding: 8px 14px;
+                font-size: 13px;
                 border-radius: 20px;
             }
 
@@ -373,10 +373,10 @@
                 min-width: 100%;
             }
 
-            /* スマホ用テーブル - カード形式で表示（コンパクト版） */
+            /* スマホ用 - コンパクト3行表示 */
             .master-table {
                 display: block;
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .master-table thead {
@@ -386,120 +386,145 @@
             .master-table tbody {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
+                gap: 10px;
             }
 
             .master-table tr {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                display: flex;
+                flex-direction: column;
                 background: #f0f4ff;
-                border-radius: 12px;
-                padding: 14px 16px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                position: relative;
+                border-radius: 10px;
+                padding: 10px 14px;
+                box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+                gap: 6px;
             }
 
             .master-table td {
-                display: block;
-                padding: 2px 0;
-                font-size: 13px;
-                line-height: 1.4;
+                display: inline-flex;
+                align-items: center;
+                padding: 1px 0;
+                font-size: 12px;
+                line-height: 1.3;
+                flex: 0 0 auto;
             }
 
-            /* 1行目：生き物の名前（全幅） */
+            /* 1行目：生き物の名前 + 施設の種類 + 操作ボタン */
             .master-table td:first-child {
-                grid-column: 1 / -1;
-                padding-bottom: 6px;
-                border-bottom: 1px solid #d0daf0;
-                margin-bottom: 2px;
-            }
-
-            /* 2行目〜4行目：目、科、施設の種類 */
-            .master-table td:nth-child(2),
-            .master-table td:nth-child(3),
-            .master-table td:nth-child(4) {
-                /* 左右に並ぶ */
-            }
-
-            /* 5行目：施設名（全幅） */
-            .master-table td:nth-child(5) {
-                grid-column: 1 / -1;
-            }
-
-            /* 6行目：訪問日 */
-            .master-table td:nth-child(6) {
-                /* 左右に並ぶ */
-            }
-
-            /* 7行目：備考（全幅） */
-            .master-table td:nth-child(7) {
-                grid-column: 1 / -1;
-            }
-
-            /* 8行目：アクション（全幅） */
-            .master-table td:nth-child(8) {
-                grid-column: 1 / -1;
-                padding-top: 8px;
-                border-top: 1px solid #d0daf0;
-                margin-top: 2px;
-            }
-
-            /* 各セルにラベルを追加 */
-            .master-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #667eea;
-                font-size: 11px;
-                display: inline-block;
-                margin-right: 4px;
+                flex: 1 1 100%;
+                font-size: 15px;
+                font-weight: 700;
+                color: #333;
+                order: 1;
             }
 
             .master-table td:first-child::before {
-                content: '';
                 display: none;
             }
 
-            .master-table td:first-child strong {
-                font-size: 16px;
-                color: #333;
-                font-weight: 700;
+            /* 目・科・施設の種類を横に並べる */
+            .master-table td:nth-child(2),
+            .master-table td:nth-child(3),
+            .master-table td:nth-child(4) {
+                order: 2;
+                flex: 1 1 30%;
+            }
+
+            .master-table td:nth-child(2)::before,
+            .master-table td:nth-child(3)::before,
+            .master-table td:nth-child(4)::before {
+                font-size: 10px;
+                margin-right: 3px;
+            }
+
+            /* 施設名 */
+            .master-table td:nth-child(5) {
+                order: 3;
+                flex: 1 1 100%;
+            }
+
+            .master-table td:nth-child(5)::before {
+                font-size: 10px;
+                margin-right: 3px;
+            }
+
+            /* 訪問日 */
+            .master-table td:nth-child(6) {
+                order: 4;
+                flex: 1 1 50%;
+            }
+
+            .master-table td:nth-child(6)::before {
+                font-size: 10px;
+                margin-right: 3px;
+            }
+
+            /* 備考 */
+            .master-table td:nth-child(7) {
+                order: 5;
+                flex: 1 1 100%;
+                font-size: 11px;
+                color: #666;
+            }
+
+            .master-table td:nth-child(7)::before {
+                font-size: 10px;
+                margin-right: 3px;
+            }
+
+            /* 操作ボタン */
+            .master-table td:nth-child(8) {
+                order: 6;
+                flex: 1 1 100%;
+                padding-top: 4px;
+            }
+
+            .master-table td:nth-child(8)::before {
+                display: none;
+            }
+
+            /* ラベルのスタイル */
+            .master-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #8899cc;
+                font-size: 10px;
+                flex-shrink: 0;
             }
 
             .action-buttons {
                 justify-content: flex-end;
-                gap: 8px;
+                gap: 6px;
             }
 
             .action-buttons button {
-                padding: 8px 16px;
-                font-size: 13px;
-                border-radius: 16px;
-                min-width: 60px;
+                padding: 6px 14px;
+                font-size: 12px;
+                border-radius: 14px;
+                min-width: 50px;
                 text-align: center;
             }
 
             .badge {
-                font-size: 11px;
-                padding: 3px 8px;
-                border-radius: 12px;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 10px;
             }
 
             .pagination {
                 flex-wrap: wrap;
-                gap: 6px;
+                gap: 4px;
             }
 
             .pagination button {
-                padding: 6px 10px;
-                font-size: 12px;
-                min-width: 36px;
+                padding: 5px 8px;
+                font-size: 11px;
+                min-width: 30px;
             }
 
             .entry-count {
-                font-size: 13px;
+                font-size: 12px;
                 text-align: left;
-                margin-bottom: 12px;
+                margin-bottom: 10px;
                 font-weight: 500;
             }
 
@@ -510,8 +535,8 @@
             .btn-filter,
             .btn-reset {
                 width: 100%;
-                padding: 12px;
-                font-size: 14px;
+                padding: 10px;
+                font-size: 13px;
             }
         }
     </style>
