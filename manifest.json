@@ -2,7 +2,7 @@
   "name": "生き物記録帳",
   "short_name": "生き物記録",
   "description": "動物園・水族館で見た生き物を記録するアプリ",
-  "start_url": "./index.html",
+  "start_url": "./list.html",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#667eea",
