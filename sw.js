@@ -1,6 +1,6 @@
 // Service Worker for Zoo Animal Records App
 
-const CACHE_NAME = 'zoo-records-v1';
+const CACHE_NAME = 'zoo-records-v2';
 const ASSETS_TO_CACHE = [
     './',
     'index.html',
