@@ -177,7 +177,7 @@ function handleSubmit(e) {
     resetFormKeepFacility();
     
     // 一覧ページにリダイレクト
-    window.location.href = 'list.html';
+    window.location.href = 'index.html';
 }
 
 // 編集ボタンクリック
@@ -197,7 +197,7 @@ function editRecord(id) {
         visitDate: record.visitDate,
         notes: record.notes || ''
     });
-    window.location.href = `index.html?${params.toString()}`;
+    window.location.href = `list.html?${params.toString()}`;
 }
 
 // 削除ボタンクリック
