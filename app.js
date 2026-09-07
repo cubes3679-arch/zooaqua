@@ -422,6 +422,8 @@ function goToPage(page) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
     loadRecords();
+    // ページ切り替え後、画面の一番上にスクロールして戻す
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // HTMLエスケープ
