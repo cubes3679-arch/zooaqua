@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="生き物記録">
     <meta name="theme-color" content="#667eea">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>生き物記録帳 - 入力</title>
     <style>
         * {
@@ -189,6 +189,61 @@
             transform: translateY(-2px);
         }
 
+        .splash-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-screen.splash-hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-paws {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .splash-paws span {
+            font-size: 40px;
+            opacity: 0;
+            transform: scale(0.5) translateY(10px);
+            animation: pawPop 0.5s ease forwards;
+        }
+
+        .splash-paws span:nth-child(1) { animation-delay: 0s; }
+        .splash-paws span:nth-child(2) { animation-delay: 0.2s; }
+        .splash-paws span:nth-child(3) { animation-delay: 0.4s; }
+        .splash-paws span:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes pawPop {
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .splash-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            animation-delay: 0.9s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 margin: 15px auto;
@@ -211,6 +266,30 @@
     </style>
 </head>
 <body>
+    <!-- 起動スプラッシュアニメーション -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-paws">
+            <span>🐾</span><span>🐾</span><span>🐾</span><span>🐾</span>
+        </div>
+        <div class="splash-title">生き物記録帳</div>
+    </div>
+    <script>
+        (function() {
+            var splash = document.getElementById('splashScreen');
+            if (sessionStorage.getItem('zooaqua_splash_shown')) {
+                splash.style.display = 'none';
+                return;
+            }
+            sessionStorage.setItem('zooaqua_splash_shown', '1');
+            setTimeout(function() {
+                splash.classList.add('splash-hide');
+                setTimeout(function() {
+                    splash.style.display = 'none';
+                }, 500);
+            }, 1600);
+        })();
+    </script>
+
     <!-- ナビゲーションバー -->
     <nav class="navbar">
         <button onclick="location.href='index.html'">📋 記録一覧</button>
