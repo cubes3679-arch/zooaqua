@@ -33,11 +33,11 @@ function handleWildSubmit(e) {
     const family = document.getElementById('wildFamily').value.trim();
     const notes = document.getElementById('wildNotes').value.trim();
 
-    if (!locationsText) { alert('見た場所を入力してください。'); return; }
-    if (!seenDate) { alert('目撃日を選択してください。'); return; }
     if (!animalNamesText) { alert('生き物の名前を入力してください。'); return; }
 
-    const locations = locationsText.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+    const locations = locationsText
+        ? locationsText.split('\n').map(name => name.trim()).filter(name => name.length > 0)
+        : [''];
     const animalNames = animalNamesText.split('\n').map(name => name.trim()).filter(name => name.length > 0);
 
     const records = getWildRecords();
