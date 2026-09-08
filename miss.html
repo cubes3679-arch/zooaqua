@@ -419,9 +419,137 @@
                 font-size: 13px;
             }
 
+            .filter-row {
+                flex-direction: column;
+            }
+
+            .filter-row .filter-item {
+                min-width: 100%;
+            }
+
+            /* スマホ用 - 見やすいカード表示 */
             .master-table {
                 display: block;
-                overflow-x: auto;
+                font-size: 13px;
+            }
+
+            .master-table thead {
+                display: none;
+            }
+
+            .master-table tbody {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .master-table tr {
+                background: #f0f4ff;
+                border-radius: 10px;
+                padding: 10px 14px;
+                box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .master-table td {
+                display: flex;
+                align-items: center;
+                padding: 1px 0;
+                font-size: 13px;
+                line-height: 1.3;
+                flex: 0 1 auto;
+                word-break: break-all;
+            }
+
+            /* 1列目：生き物の名前（大きく） */
+            .master-table tr td:first-child {
+                font-size: 15px;
+                font-weight: 700;
+                color: #333;
+                order: 1;
+                flex: 1 1 auto;
+                word-break: break-all;
+            }
+
+            /* 施設の種類（バッジ風） */
+            .master-table tr td:nth-child(4) {
+                order: 1;
+                flex: 0 0 auto;
+                font-size: 11px;
+            }
+
+            /* 操作ボタン */
+            .master-table tr td:nth-child(8) {
+                order: 1;
+                flex: 0 0 auto;
+                font-size: 12px;
+            }
+
+            /* 目・科・施設名 */
+            .master-table tr td:nth-child(2),
+            .master-table tr td:nth-child(3),
+            .master-table tr td:nth-child(5) {
+                order: 2;
+                flex: 0 1 47%;
+                font-size: 12px;
+            }
+
+            /* 訪問日・備考 */
+            .master-table tr td:nth-child(6),
+            .master-table tr td:nth-child(7) {
+                order: 3;
+                flex: 0 1 47%;
+                font-size: 12px;
+            }
+
+            .action-buttons {
+                justify-content: flex-end;
+                gap: 5px;
+            }
+
+            .action-buttons button {
+                padding: 5px 12px;
+                font-size: 12px;
+                border-radius: 14px;
+                min-width: 48px;
+                text-align: center;
+            }
+
+            .badge {
+                font-size: 11px;
+                padding: 2px 6px;
+                border-radius: 8px;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .pagination button {
+                padding: 5px 8px;
+                font-size: 11px;
+                min-width: 30px;
+            }
+
+            .entry-count {
+                font-size: 12px;
+                text-align: left;
+                margin-bottom: 10px;
+                font-weight: 500;
+            }
+
+            .filter-buttons {
+                flex-direction: column;
+            }
+
+            .btn-filter,
+            .btn-reset {
+                width: 100%;
+                padding: 10px;
+                font-size: 13px;
             }
         }
     </style>

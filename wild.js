@@ -1,7 +1,7 @@
 // 生き物記録アプリ - 野生記録（おまけ機能）
 
 const WILD_STORAGE_KEY = 'zoo_wild_records';
-const WILD_ITEMS_PER_PAGE = 10;
+const WILD_ITEMS_PER_PAGE = 20;
 let wildCurrentPage = 1;
 let wildFilteredRecords = [];
 

@@ -4,7 +4,7 @@
 const STORAGE_KEY = 'zoo_animal_records';
 
 // ページネーション設定
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 20;
 let currentPage = 1;
 let filteredRecords = [];
 

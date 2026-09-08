@@ -1,7 +1,7 @@
 // 生き物記録アプリ - 見られなかった記録（おまけ機能）
 
 const MISS_STORAGE_KEY = 'zoo_missed_records';
-const MISS_ITEMS_PER_PAGE = 10;
+const MISS_ITEMS_PER_PAGE = 20;
 let missCurrentPage = 1;
 let missFilteredRecords = [];
 
