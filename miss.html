@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="生き物記録">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.svg?v=3">
+    <title>生き物記録帳 - 見られなかった記録</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+
+        .navbar button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .navbar button:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section h2 {
+            margin: 0 0 24px 0;
+            color: #333;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-section input[type="text"],
+        .form-section input[type="date"],
+        .form-section textarea {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-section input[type="text"]:focus,
+        .form-section input[type="date"]:focus,
+        .form-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-section textarea {
+            min-height: 80px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .facility-type {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .facility-type label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f5f5f5;
+            transition: all 0.3s ease;
+        }
+
+        .facility-type label:hover {
+            background: #eee;
+        }
+
+        .facility-type label:has(input:checked) {
+            background: #667eea;
+            color: white;
+        }
+
+        .facility-type input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: -10px;
+            margin-bottom: 16px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .entry-count {
+            text-align: right;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .filter-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-row .filter-item {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-row label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .filter-row input,
+        .filter-row select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-filter {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-reset {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 14px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .pagination .page-info {
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .master-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .master-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .master-table th {
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .master-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .master-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .master-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-buttons button {
+            padding: 6px 14px;
+            font-size: 12px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-edit {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-zoo {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-aquarium {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .badge-etc {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .notes-cell {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .facility-item {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 15px auto;
+                padding: 0 10px;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .navbar {
+                padding: 10px;
+            }
+
+            .navbar button {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+
+            .master-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ナビゲーションバー -->
+    <nav class="navbar">
+        <button onclick="location.href='index.html'">📋 記録一覧</button>
+        <button onclick="location.href='list.html'">📝 新規入力</button>
+        <button onclick="location.href='miss.html'">❓ 見られなかった</button>
+        <button onclick="location.href='wild.html'">🌿 野生記録</button>
+    </nav>
+
+    <div class="main-container">
+        <!-- 入力フォーム -->
+        <div class="form-section">
+            <h2>❓ 見られなかった記録</h2>
+            <p class="hint">展示されているはずなのに、実際には見られなかった生き物を記録しておくおまけページです。</p>
+            <form id="missForm">
+                <input type="hidden" id="missEntryId">
+
+                <label>施設の種類 *</label>
+                <div class="facility-type">
+                    <label>
+                        <input type="radio" name="missFacilityType" value="動物園" checked> 動物園
+                    </label>
+                    <label>
+                        <input type="radio" name="missFacilityType" value="水族館"> 水族館
+                    </label>
+                </div>
+
+                <label for="missFacilityNames">施設名（複数可）*</label>
+                <textarea id="missFacilityNames" placeholder="例：&#10;上野動物園&#10;&#10;※複数の施設を入力する場合は、1行に1つずつ記入してください。" required></textarea>
+
+                <label for="missVisitDate">訪問日 *</label>
+                <input type="date" id="missVisitDate" required>
+
+                <label for="missAnimalNames">見られなかった生き物の名前（複数可）*</label>
+                <textarea id="missAnimalNames" placeholder="例：&#10;オオアリクイ&#10;&#10;※1行に1つずつ入力してください" required></textarea>
+
+                <label for="missOrder">目（もく）</label>
+                <input type="text" id="missOrder" list="missOrderList" placeholder="入力または選択">
+                <datalist id="missOrderList"></datalist>
+
+                <label for="missFamily">科</label>
+                <input type="text" id="missFamily" list="missFamilyList" placeholder="入力または選択">
+                <datalist id="missFamilyList"></datalist>
+
+                <label for="missNotes">備考</label>
+                <textarea id="missNotes" placeholder="見られなかった理由、次回のリベンジメモなど"></textarea>
+
+                <div class="button-group">
+                    <button type="submit" id="missSubmitBtn" class="btn-primary">登録する</button>
+                    <button type="button" id="missCancelBtn" class="btn-secondary" style="display: none;" onclick="cancelMissEdit()">キャンセル</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 検索・フィルターセクション -->
+        <div class="filter-section">
+            <h2>🔍 検索・絞り込み</h2>
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label for="missSearchName">生き物の名前（あいまい検索）</label>
+                    <input type="text" id="missSearchName" placeholder="例：オオアリクイ">
+                </div>
+                <div class="filter-item">
+                    <label for="missFilterFacility">施設名</label>
+                    <select id="missFilterFacility">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-buttons">
+                <button class="btn-filter" onclick="applyMissFilter()">🔍 検索</button>
+                <button class="btn-reset" onclick="resetMissFilter()">🔄 リセット</button>
+            </div>
+        </div>
+
+        <!-- 一覧 -->
+        <div class="form-section">
+            <h2>📋 見られなかった記録一覧</h2>
+            <div class="entry-count" id="missEntryCount">0件</div>
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>生き物の名前</th>
+                        <th>目</th>
+                        <th>科</th>
+                        <th>施設の種類</th>
+                        <th>施設名</th>
+                        <th>訪問日</th>
+                        <th>備考</th>
+                        <th>アクション</th>
+                    </tr>
+                </thead>
+                <tbody id="missList"></tbody>
+            </table>
+            <div class="pagination" id="missPagination"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR_MeO4wxSFREPam6jsmCWf5bQ5DuOmrw",
+            authDomain: "zooaqua-1ba85.firebaseapp.com",
+            databaseURL: "https://zooaqua-1ba85-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "zooaqua-1ba85",
+            storageBucket: "zooaqua-1ba85.firebasestorage.app",
+            messagingSenderId: "528015026728",
+            appId: "1:528015026728:web:813fffbe9de51a69c3231d"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="auth.js"></script>
+    <script src="miss.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then((registration) => console.log('ServiceWorker registered:', registration.scope))
+                .catch((error) => console.log('ServiceWorker registration failed:', error));
+        }
+    </script>
+</body>
+</html>
