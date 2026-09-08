@@ -390,7 +390,10 @@
                 <textarea id="wildLocations" placeholder="例：&#10;近所の川&#10;北海道の森&#10;&#10;※複数の場所を入力する場合は、1行に1つずつ記入してください。空欄でも登録できます。"></textarea>
 
                 <label for="wildSeenDate">目撃日（任意）</label>
-                <input type="date" id="wildSeenDate">
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <input type="date" id="wildSeenDate" style="margin-bottom: 0; flex: 1;">
+                    <button type="button" class="btn-secondary" style="padding: 12px 16px; font-size: 13px; white-space: nowrap;" onclick="document.getElementById('wildSeenDate').value=''">日付なし</button>
+                </div>
 
                 <label for="wildAnimalNames">生き物の名前（複数可）*</label>
                 <textarea id="wildAnimalNames" placeholder="例：&#10;カワセミ&#10;タヌキ&#10;&#10;※1行に1つずつ入力してください" required></textarea>
