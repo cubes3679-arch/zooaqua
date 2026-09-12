@@ -121,7 +121,7 @@ function handleSubmit(e) {
     const notes = document.getElementById('notes').value.trim();
     
     if (!facilityNamesText) { alert('施設名を入力してください。'); return; }
-    if (!visitDate) { alert('見学日を選択してください。'); return; }
+    if (!visitDate) { alert('最終見学日を選択してください。'); return; }
     if (!animalNamesText) { alert('生き物の名前を入力してください。'); return; }
     
     // 施設名と生き物の名前を分割
