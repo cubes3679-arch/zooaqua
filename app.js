@@ -53,61 +53,56 @@ function initDuplicateCheck() {
     });
 }
 
-// 重複チェック関数
-function checkDuplicates(newNames, newFacilities, visitDate, records, excludeId) {
-    const duplicates = [];
+// 動物名の登録済みチェック（同じ動物名があれば施設名は自動でマージされる）
+function checkDuplicates(newNames, newFacilities, records, excludeId) {
+    const infos = [];
     newNames.forEach(name => {
-        newFacilities.forEach(facility => {
-            const isDuplicate = records.some(r => 
-                r.animalName === name && 
-                r.facilityName === facility && 
-                r.visitDate === visitDate &&
-                r.id !== excludeId
-            );
-            if (isDuplicate) {
-                duplicates.push({ name, facility });
+        const existing = records.find(r => r.animalName === name && r.id !== excludeId);
+        if (existing) {
+            const newOnes = newFacilities.filter(f => !existing.facilityNames.includes(f));
+            if (newOnes.length > 0) {
+                infos.push({ name, newFacilities: newOnes });
             }
-        });
+        }
     });
-    return duplicates;
+    return infos;
 }
 
-// 重複警告表示
+// 登録済み動物のお知らせ表示
 function showDuplicateWarning() {
     const animalNamesText = document.getElementById('animalNames').value.trim();
     const facilityNamesText = document.getElementById('facilityNames').value.trim();
-    const visitDate = document.getElementById('visitDate').value;
-    
+
     const warningDiv = document.getElementById('duplicateWarning');
     if (warningDiv) warningDiv.remove();
-    
-    if (!animalNamesText || !facilityNamesText || !visitDate) return;
-    
+
+    if (!animalNamesText || !facilityNamesText) return;
+
     const animalNames = animalNamesText.split('\n').map(name => name.trim()).filter(name => name.length > 0);
     const facilityNames = facilityNamesText.split('\n').map(name => name.trim()).filter(name => name.length > 0);
     const records = getRecords();
     const currentId = document.getElementById('entryId').value;
-    const duplicates = checkDuplicates(animalNames, facilityNames, visitDate, records, currentId);
-    
-    if (duplicates.length > 0) {
-        const warning = document.createElement('div');
-        warning.id = 'duplicateWarning';
-        warning.style.cssText = `
-            background: #ffebee;
-            border: 1px solid #f44336;
+    const infos = checkDuplicates(animalNames, facilityNames, records, currentId);
+
+    if (infos.length > 0) {
+        const notice = document.createElement('div');
+        notice.id = 'duplicateWarning';
+        notice.style.cssText = `
+            background: #e3f2fd;
+            border: 1px solid #64b5f6;
             border-radius: 8px;
             padding: 12px 16px;
             margin-bottom: 16px;
-            color: #c62828;
+            color: #1565c0;
             font-size: 13px;
         `;
-        const dupText = duplicates.slice(0, 5).map(d => `・${d.facility}の${d.name}`).join('<br>');
-        const moreText = duplicates.length > 5 ? `<br>...他${duplicates.length - 5}件` : '';
-        warning.innerHTML = `<strong>⚠️ 重複しています：</strong><br>${dupText}${moreText}`;
-        
+        const infoText = infos.slice(0, 5).map(i => `・${i.name}に施設名「${i.newFacilities.join('、')}」を追加`).join('<br>');
+        const moreText = infos.length > 5 ? `<br>...他${infos.length - 5}件` : '';
+        notice.innerHTML = `<strong>ℹ️ 登録済みの生き物です：</strong><br>${infoText}${moreText}`;
+
         const hint = document.getElementById('animalNames').nextElementSibling;
         if (hint && hint.classList.contains('hint')) {
-            hint.parentNode.insertBefore(warning, hint);
+            hint.parentNode.insertBefore(notice, hint);
         }
     }
 }
@@ -135,44 +130,46 @@ function handleSubmit(e) {
     
     if (facilityNames.length === 0) { alert('施設名を入力してください。'); return; }
     if (animalNames.length === 0) { alert('生き物の名前を入力してください。'); return; }
-    
-    // 重複チェック
+
     const records = getRecords();
-    const duplicates = checkDuplicates(animalNames, facilityNames, visitDate, records, id);
-    if (duplicates.length > 0) {
-        const dupText = duplicates.slice(0, 3).map(d => `${d.facility}の${d.name}`).join('、');
-        const moreText = duplicates.length > 3 ? `他${duplicates.length - 3}件` : '';
-        if (!confirm(`以下の組み合わせは既に登録されていますが、追加しますか？\n\n${dupText}${moreText ? '、' + moreText : ''}`)) {
-            return;
-        }
-    }
-    
-    // 編集モードの場合、既存レコードを削除
+
+    // 編集モードの場合、対象レコードを一旦取り除く
     if (id) {
         const index = records.findIndex(r => r.id == id);
         if (index !== -1) records.splice(index, 1);
     }
-    
-    // 施設名×生き物の組み合わせでレコードを作成
-    const newRecords = [];
-    facilityNames.forEach((facility, fIndex) => {
-        animalNames.forEach((name, aIndex) => {
-            newRecords.push({
-                id: id ? `${id}_${fIndex}_${aIndex}` : Date.now().toString() + '_' + fIndex + '_' + aIndex,
+
+    // 生き物ごとに、同じ動物名の記録が既にあれば施設名だけ追加し、なければ新規作成する
+    animalNames.forEach((name, aIndex) => {
+        const existing = records.find(r => r.animalName === name);
+        if (existing) {
+            facilityNames.forEach(facility => {
+                if (!existing.facilityNames.includes(facility)) {
+                    existing.facilityNames.push(facility);
+                }
+            });
+            existing.visitDate = visitDate;
+            existing.facilityType = facilityType;
+            if (order) existing.order = order;
+            if (family) existing.family = family;
+            if (notes) existing.notes = notes;
+            existing.updatedAt = new Date().toISOString();
+        } else {
+            records.unshift({
+                id: (id && animalNames.length === 1) ? id : Date.now().toString() + '_' + aIndex + '_' + Math.random().toString(36).slice(2, 6),
                 animalName: name,
                 order,
                 family,
                 facilityType,
-                facilityName: facility,
+                facilityNames: [...facilityNames],
                 visitDate,
                 notes,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             });
-        });
+        }
     });
-    
-    newRecords.forEach(record => records.unshift(record));
+
     saveRecords(records);
     resetFormKeepFacility();
     
@@ -193,7 +190,7 @@ function editRecord(id) {
         order: record.order || '',
         family: record.family || '',
         facilityType: record.facilityType,
-        facilityName: record.facilityName,
+        facilityName: (record.facilityNames || []).join('\n'),
         visitDate: record.visitDate,
         notes: record.notes || ''
     });
@@ -252,7 +249,7 @@ function updateDatalists() {
     // 重複を除去してソート
     const orders = [...new Set(records.map(r => r.order).filter(Boolean))].sort();
     const families = [...new Set(records.map(r => r.family).filter(Boolean))].sort();
-    const facilities = [...new Set(records.map(r => r.facilityName).filter(Boolean))].sort();
+    const facilities = [...new Set(records.flatMap(r => r.facilityNames || []).filter(Boolean))].sort();
     
     // 入力フォームのdatalist
     const orderList = document.getElementById('orderList');
@@ -312,7 +309,7 @@ function loadRecords() {
             return false;
         }
         // 施設名で絞り込み
-        if (filterFacility && !(record.facilityName || '').toLowerCase().includes(filterFacility)) {
+        if (filterFacility && !(record.facilityNames || []).some(f => f.toLowerCase().includes(filterFacility))) {
             return false;
         }
         return true;
@@ -357,7 +354,7 @@ function renderList(records) {
             <td>${escapeHtml(record.order || '-')}</td>
             <td>${escapeHtml(record.family || '-')}</td>
             <td><span class="badge ${badgeClass}">${record.facilityType}</span></td>
-            <td><span class="facility-item">${escapeHtml(record.facilityName || '-')}</span></td>
+            <td><div class="facility-list">${(record.facilityNames || []).map(f => `<span class="facility-item">${escapeHtml(f)}</span>`).join('') || '-'}</div></td>
             <td>${record.visitDate || '-'}</td>
             <td class="notes-cell" title="${escapeHtml(record.notes || '')}">${escapeHtml(record.notes || '-')}</td>
             <td class="action-buttons">
@@ -438,11 +435,21 @@ function escapeHtml(str) {
 function getRecords() {
     try {
         const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
+        const records = data ? JSON.parse(data) : [];
+        return records.map(normalizeRecord);
     } catch (e) {
         console.error('記録の取得に失敗しました:', e);
         return [];
     }
+}
+
+// 旧データ形式（facilityName単一文字列）をfacilityNames配列に変換
+function normalizeRecord(record) {
+    if (!Array.isArray(record.facilityNames)) {
+        record.facilityNames = record.facilityName ? [record.facilityName] : [];
+        delete record.facilityName;
+    }
+    return record;
 }
 
 // 記録を保存
