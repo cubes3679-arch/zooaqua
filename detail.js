@@ -48,7 +48,11 @@ function handleAnimalInfoSubmit(e) {
 
     const records = getRecords();
     const record = records.find(r => r.id === currentRecordId);
-    if (!record) return;
+    if (!record) {
+        alert('記録が見つかりませんでした。一覧に戻ります。');
+        window.location.href = 'index.html';
+        return;
+    }
 
     const newName = document.getElementById('detailAnimalName').value.trim();
     const order = document.getElementById('detailOrder').value.trim();
@@ -93,7 +97,11 @@ function handleVisitSubmit(e) {
 
     const records = getRecords();
     const record = records.find(r => r.id === currentRecordId);
-    if (!record) return;
+    if (!record) {
+        alert('記録が見つかりませんでした。ページを再読み込みします。');
+        loadDetailRecord();
+        return;
+    }
 
     const visitId = document.getElementById('visitEntryId').value;
     const facilityType = document.querySelector('input[name="visitFacilityType"]:checked').value;
@@ -107,17 +115,21 @@ function handleVisitSubmit(e) {
     if (visitId) {
         // 編集モード：この見学記録だけを更新する
         const visit = record.visits.find(v => v.id === visitId);
-        if (visit) {
-            const dup = record.visits.find(v => v.id !== visitId && v.facilityName === facilityName && v.visitDate === visitDate);
-            if (dup) {
-                alert('その施設・日付の見学記録は既にあります。');
-                return;
-            }
-            visit.facilityType = facilityType;
-            visit.facilityName = facilityName;
-            visit.visitDate = visitDate;
-            visit.notes = notes;
+        if (!visit) {
+            alert('更新対象の見学記録が見つかりませんでした。ページを再読み込みします。');
+            resetVisitForm();
+            renderVisitList(record);
+            return;
         }
+        const dup = record.visits.find(v => v.id !== visitId && v.facilityName === facilityName && v.visitDate === visitDate);
+        if (dup) {
+            alert('その施設・日付の見学記録は既にあります。');
+            return;
+        }
+        visit.facilityType = facilityType;
+        visit.facilityName = facilityName;
+        visit.visitDate = visitDate;
+        visit.notes = notes;
     } else {
         // 新規追加：同じ施設・同じ日付があれば備考だけ更新する
         const dup = record.visits.find(v => v.facilityName === facilityName && v.visitDate === visitDate);
@@ -148,9 +160,17 @@ function handleVisitSubmit(e) {
 function editVisit(visitId) {
     const records = getRecords();
     const record = records.find(r => r.id === currentRecordId);
-    if (!record) return;
+    if (!record) {
+        alert('記録が見つかりませんでした。ページを再読み込みします。');
+        loadDetailRecord();
+        return;
+    }
     const visit = record.visits.find(v => v.id === visitId);
-    if (!visit) return;
+    if (!visit) {
+        alert('この見学記録が見つかりませんでした。ページを再読み込みします。');
+        renderVisitList(record);
+        return;
+    }
 
     document.getElementById('visitEntryId').value = visit.id;
     document.getElementById('visitFacilityName').value = visit.facilityName;
@@ -163,16 +183,25 @@ function editVisit(visitId) {
     document.getElementById('visitSubmitBtn').textContent = '更新する';
     document.getElementById('visitCancelBtn').style.display = 'inline-block';
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // ページ最上部ではなく、見学記録の入力フォームまでスクロールする
+    document.getElementById('visitForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // 見学記録の削除ボタン
 function deleteVisit(visitId) {
     const records = getRecords();
     const record = records.find(r => r.id === currentRecordId);
-    if (!record) return;
+    if (!record) {
+        alert('記録が見つかりませんでした。ページを再読み込みします。');
+        loadDetailRecord();
+        return;
+    }
     const visit = record.visits.find(v => v.id === visitId);
-    if (!visit) return;
+    if (!visit) {
+        alert('この見学記録が見つかりませんでした。ページを再読み込みします。');
+        renderVisitList(record);
+        return;
+    }
 
     if (!confirm(`「${visit.facilityName}」${visit.visitDate}の見学記録を削除しますか？`)) return;
 
