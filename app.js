@@ -171,10 +171,56 @@ function handleSubmit(e) {
     });
 
     saveRecords(records);
+
+    // 施設訪問記録にも自動反映（同じ施設・同じ日の記録が無い場合のみ追加）
+    syncFacilityVisits(facilityType, facilityNames, visitDate);
+
     resetFormKeepFacility();
-    
+
     // 一覧ページにリダイレクト
     window.location.href = 'index.html';
+}
+
+// 生き物記録の入力内容を施設訪問記録（zoo_facility_visits）にも登録する
+const FACILITY_VISITS_STORAGE_KEY = 'zoo_facility_visits';
+
+function syncFacilityVisits(facilityType, facilityNames, visitDate) {
+    try {
+        const data = localStorage.getItem(FACILITY_VISITS_STORAGE_KEY);
+        const facilityRecords = data ? JSON.parse(data) : [];
+        let changed = false;
+
+        facilityNames.forEach(facilityName => {
+            const alreadyLogged = facilityRecords.some(r => r.facilityName === facilityName && r.visitDate === visitDate);
+            if (!alreadyLogged) {
+                facilityRecords.unshift({
+                    id: Date.now().toString() + '_' + Math.random().toString(36).slice(2, 6),
+                    facilityName,
+                    facilityType,
+                    visitDate,
+                    notes: '',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+                changed = true;
+            }
+        });
+
+        if (!changed) return;
+
+        localStorage.setItem(FACILITY_VISITS_STORAGE_KEY, JSON.stringify(facilityRecords));
+
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            const recordsObj = {};
+            facilityRecords.forEach((record, index) => {
+                recordsObj[record.id || `record_${index}`] = record;
+            });
+            firebase.database().ref('facility_visits').set(recordsObj)
+                .catch(e => console.error('Firebase(facility_visits) 保存エラー:', e));
+        }
+    } catch (e) {
+        console.error('施設訪問記録の自動登録に失敗しました:', e);
+    }
 }
 
 // 編集ボタンクリック
