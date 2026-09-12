@@ -435,8 +435,13 @@ function escapeHtml(str) {
 function getRecords() {
     try {
         const data = localStorage.getItem(STORAGE_KEY);
-        const records = data ? JSON.parse(data) : [];
-        return records.map(normalizeRecord);
+        const records = (data ? JSON.parse(data) : []).map(normalizeRecord);
+        const { merged, changed } = consolidateDuplicateAnimals(records);
+        if (changed) {
+            saveRecords(merged);
+            return merged;
+        }
+        return records;
     } catch (e) {
         console.error('記録の取得に失敗しました:', e);
         return [];
@@ -450,6 +455,40 @@ function normalizeRecord(record) {
         delete record.facilityName;
     }
     return record;
+}
+
+// 過去に別々に登録された同じ動物名の記録を1件に統合する（既存データ向けの一括統合）
+function consolidateDuplicateAnimals(records) {
+    const merged = [];
+    const indexByName = new Map();
+    let changed = false;
+
+    records.forEach(record => {
+        const existingIndex = indexByName.get(record.animalName);
+        if (existingIndex === undefined) {
+            indexByName.set(record.animalName, merged.length);
+            merged.push(record);
+            return;
+        }
+
+        changed = true;
+        const target = merged[existingIndex];
+
+        record.facilityNames.forEach(f => {
+            if (!target.facilityNames.includes(f)) target.facilityNames.push(f);
+        });
+        if (record.visitDate && (!target.visitDate || record.visitDate > target.visitDate)) {
+            target.visitDate = record.visitDate;
+        }
+        if (!target.order && record.order) target.order = record.order;
+        if (!target.family && record.family) target.family = record.family;
+        if (record.notes && record.notes !== target.notes) {
+            target.notes = target.notes ? `${target.notes}\n${record.notes}` : record.notes;
+        }
+        target.updatedAt = new Date().toISOString();
+    });
+
+    return { merged, changed };
 }
 
 // 記録を保存
