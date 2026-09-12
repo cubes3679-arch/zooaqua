@@ -129,3 +129,75 @@ document.addEventListener('DOMContentLoaded', async function() {
 setInterval(async () => {
     await syncWithFirebase();
 }, 5 * 60 * 1000); // 5分
+
+// --- 強制同期（この端末を「正」としてクラウドに反映する／クラウドの内容で
+// この端末を上書きする）。自動マージがうまく動いていないように見えるときの
+// 手動リカバリー手段として使う ---
+
+function getFacilityVisitsForSync() {
+    try {
+        const data = localStorage.getItem('zoo_facility_visits');
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+async function saveFacilityVisitsToFirebaseDirect(records) {
+    const recordsObj = {};
+    records.forEach((record, index) => {
+        recordsObj[record.id || `record_${index}`] = record;
+    });
+    await firebase.database().ref('facility_visits').set(recordsObj);
+}
+
+async function loadFacilityVisitsFromFirebaseDirect() {
+    const snapshot = await firebase.database().ref('facility_visits').once('value');
+    const data = snapshot.val();
+    return data ? Object.values(data) : [];
+}
+
+// この端末のデータを「正」として、クラウドを丸ごと上書きする
+async function forcePushLocalToCloud() {
+    const animalRecords = (typeof getRecords === 'function') ? getRecords() : [];
+    const facilityRecords = getFacilityVisitsForSync();
+
+    await saveToFirebase(animalRecords);
+    await saveFacilityVisitsToFirebaseDirect(facilityRecords);
+
+    return { animalCount: animalRecords.length, facilityCount: facilityRecords.length };
+}
+
+// クラウドのデータで、この端末を丸ごと上書きする
+async function forcePullCloudToLocal() {
+    const animalRecords = await loadFromFirebase();
+    localStorage.setItem('zoo_animal_records', JSON.stringify(animalRecords));
+
+    const facilityRecords = await loadFacilityVisitsFromFirebaseDirect();
+    localStorage.setItem('zoo_facility_visits', JSON.stringify(facilityRecords));
+
+    return { animalCount: animalRecords.length, facilityCount: facilityRecords.length };
+}
+
+async function handleForcePush() {
+    if (!confirm('この端末のデータを「正しいデータ」として、クラウドを上書きします。\n他の端末にしかない変更があれば失われます。よろしいですか？')) return;
+    try {
+        const result = await forcePushLocalToCloud();
+        alert(`クラウドに保存しました。（生き物の記録：${result.animalCount}件、施設訪問記録：${result.facilityCount}件）\n他の端末では「クラウドから読み込み直す」を実行してください。`);
+    } catch (e) {
+        console.error('強制アップロードに失敗しました:', e);
+        alert('クラウドへの保存に失敗しました。通信環境を確認してもう一度お試しください。');
+    }
+}
+
+async function handleForcePull() {
+    if (!confirm('クラウドのデータで、この端末のデータを上書きします。\nこの端末にしかないまだ保存していない変更があれば失われます。よろしいですか？')) return;
+    try {
+        const result = await forcePullCloudToLocal();
+        alert(`クラウドのデータを読み込みました。（生き物の記録：${result.animalCount}件、施設訪問記録：${result.facilityCount}件）`);
+        location.reload();
+    } catch (e) {
+        console.error('強制ダウンロードに失敗しました:', e);
+        alert('クラウドからの読み込みに失敗しました。通信環境を確認してもう一度お試しください。');
+    }
+}
