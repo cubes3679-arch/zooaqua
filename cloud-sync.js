@@ -41,7 +41,10 @@ async function saveToFirebase(records) {
             const key = record.firebaseKey || `record_${index}`;
             recordsObj[key] = record;
         });
-        await RECORDS_REF.set(recordsObj);
+        // undefinedが混ざっているとFirebaseへの書き込みが失敗するため、
+        // JSONを介して除去してから書き込む
+        const sanitized = JSON.parse(JSON.stringify(recordsObj));
+        await RECORDS_REF.set(sanitized);
         console.log('Firebase に保存しました');
         return true;
     } catch (error) {
@@ -144,17 +147,31 @@ function getFacilityVisitsForSync() {
 }
 
 async function saveFacilityVisitsToFirebaseDirect(records) {
-    const recordsObj = {};
-    records.forEach((record, index) => {
-        recordsObj[record.id || `record_${index}`] = record;
-    });
-    await firebase.database().ref('facility_visits').set(recordsObj);
+    try {
+        const recordsObj = {};
+        records.forEach((record, index) => {
+            recordsObj[record.id || `record_${index}`] = record;
+        });
+        // undefinedが混ざっているとFirebaseへの書き込みが失敗するため、
+        // JSONを介して除去してから書き込む
+        const sanitized = JSON.parse(JSON.stringify(recordsObj));
+        await firebase.database().ref('facility_visits').set(sanitized);
+        return true;
+    } catch (error) {
+        console.error('Firebase(facility_visits) への保存エラー:', error);
+        return false;
+    }
 }
 
 async function loadFacilityVisitsFromFirebaseDirect() {
-    const snapshot = await firebase.database().ref('facility_visits').once('value');
-    const data = snapshot.val();
-    return data ? Object.values(data) : [];
+    try {
+        const snapshot = await firebase.database().ref('facility_visits').once('value');
+        const data = snapshot.val();
+        return data ? Object.values(data) : [];
+    } catch (error) {
+        console.error('Firebase(facility_visits) からの読み込みエラー:', error);
+        return [];
+    }
 }
 
 // この端末のデータを「正」として、クラウドを丸ごと上書きする
@@ -162,8 +179,13 @@ async function forcePushLocalToCloud() {
     const animalRecords = (typeof getRecords === 'function') ? getRecords() : [];
     const facilityRecords = getFacilityVisitsForSync();
 
-    await saveToFirebase(animalRecords);
-    await saveFacilityVisitsToFirebaseDirect(facilityRecords);
+    const animalOk = await saveToFirebase(animalRecords);
+    const facilityOk = await saveFacilityVisitsToFirebaseDirect(facilityRecords);
+
+    if (!animalOk || !facilityOk) {
+        const failed = [!animalOk ? '生き物の記録' : null, !facilityOk ? '施設訪問記録' : null].filter(Boolean).join('・');
+        throw new Error(`${failed}の保存に失敗しました。詳細はコンソールを確認してください。`);
+    }
 
     return { animalCount: animalRecords.length, facilityCount: facilityRecords.length };
 }
@@ -186,7 +208,7 @@ async function handleForcePush() {
         alert(`クラウドに保存しました。（生き物の記録：${result.animalCount}件、施設訪問記録：${result.facilityCount}件）\n他の端末では「クラウドから読み込み直す」を実行してください。`);
     } catch (e) {
         console.error('強制アップロードに失敗しました:', e);
-        alert('クラウドへの保存に失敗しました。通信環境を確認してもう一度お試しください。');
+        alert(`クラウドへの保存に失敗しました。\n${e.message || e}\n\n通信環境を確認してもう一度お試しください。`);
     }
 }
 
@@ -198,6 +220,6 @@ async function handleForcePull() {
         location.reload();
     } catch (e) {
         console.error('強制ダウンロードに失敗しました:', e);
-        alert('クラウドからの読み込みに失敗しました。通信環境を確認してもう一度お試しください。');
+        alert(`クラウドからの読み込みに失敗しました。\n${e.message || e}\n\n通信環境を確認してもう一度お試しください。`);
     }
 }
