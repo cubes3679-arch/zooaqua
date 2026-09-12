@@ -53,48 +53,29 @@ async function saveToFirebase(records) {
     }
 }
 
-// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
-// 両方にあるものは updatedAt/createdAt が新しい方を採用する）
-// これにより、片方の端末にしか無い新規レコードが同期のたびに
-// 丸ごと消えてしまうことを防ぐ
-function mergeRecordsById(recordsA, recordsB) {
-    const byId = new Map();
-    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
-    recordsB.forEach(r => {
-        if (!r || !r.id) return;
-        const existing = byId.get(r.id);
-        if (!existing) {
-            byId.set(r.id, r);
-            return;
-        }
-        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
-        byId.set(r.id, otherTime > existingTime ? r : existing);
-    });
-    return Array.from(byId.values());
-}
-
-// ローカルストレージと Firebase の同期（idベースのマージ）
+// ローカルストレージと Firebase の同期
+//
+// saveRecords は編集のたびに（保存直後・ページ遷移前に）その時点の
+// ローカルの内容をまるごとFirebaseへ即座にpushする。そのため、この
+// syncWithFirebaseは「他の端末での変更を取り込む」ためのpull専用にし、
+// Firebaseの内容をそのままローカルへ反映する。
+//
+// 以前はid単位でマージしてからFirebaseへ書き戻していたが、その方式には
+// 「レコードの削除・統合を表現できない」という欠陥があった。例えば
+// 別の端末で2つの記録を1つに統合（片方のidを削除）しても、まだ同期して
+// いない端末はローカルに古い方のidをまだ持っているため、そのidをpull後に
+// マージ→書き戻ししてしまうと、消えたはずの記録がFirebase上に復活して
+// しまっていた。pull専用にすることでこの問題を避ける。
 async function syncWithFirebase() {
     console.log('同期開始...');
 
-    // ローカルデータを取得
-    const localData = localStorage.getItem('zoo_animal_records');
-    const localRecords = localData ? JSON.parse(localData) : [];
-    console.log('ローカルレコード数:', localRecords.length);
-
-    // Firebase からデータを取得
     const firebaseRecords = await loadFromFirebase();
     console.log('Firebase レコード数:', firebaseRecords.length);
 
-    const merged = mergeRecordsById(localRecords, firebaseRecords);
-    console.log('マージ後レコード数:', merged.length);
+    localStorage.setItem('zoo_animal_records', JSON.stringify(firebaseRecords));
 
-    localStorage.setItem('zoo_animal_records', JSON.stringify(merged));
-    await saveToFirebase(merged);
-
-    console.log('同期完了。最終レコード数:', merged.length);
-    return merged;
+    console.log('同期完了。最終レコード数:', firebaseRecords.length);
+    return firebaseRecords;
 }
 
 // ページ読み込み後に saveRecords をラップして Firebase 同期を有効化

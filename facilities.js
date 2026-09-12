@@ -400,31 +400,10 @@ async function saveFacilityToFirebase(records) {
     }
 }
 
-// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
-// 両方にあるものはupdatedAt/createdAtが新しい方を採用する）
-function mergeFacilityRecordsById(recordsA, recordsB) {
-    const byId = new Map();
-    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
-    recordsB.forEach(r => {
-        if (!r || !r.id) return;
-        const existing = byId.get(r.id);
-        if (!existing) {
-            byId.set(r.id, r);
-            return;
-        }
-        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
-        byId.set(r.id, otherTime > existingTime ? r : existing);
-    });
-    return Array.from(byId.values());
-}
-
+// saveFacilityRecordsが編集のたびにFirebaseへ即座にpushするため、
+// ここはpull専用にする（id単位マージだと、統合・削除された記録が
+// 未同期の端末から復活してしまう問題があったため）
 async function syncFacilityWithFirebase() {
-    const localRecords = getFacilityRecords();
     const firebaseRecords = await loadFacilityFromFirebase();
-
-    const merged = mergeFacilityRecordsById(localRecords, firebaseRecords);
-
-    localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(merged));
-    await saveFacilityToFirebase(merged);
+    localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(firebaseRecords));
 }
