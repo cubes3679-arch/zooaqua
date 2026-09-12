@@ -294,6 +294,7 @@
     <nav class="navbar">
         <button onclick="location.href='index.html'">📋 記録一覧</button>
         <button onclick="location.href='list.html'">📝 新規入力</button>
+        <button onclick="location.href='facilities.html'">🏛️ 施設訪問記録</button>
         <button onclick="location.href='miss.html'">❓ 見られなかった</button>
         <button onclick="location.href='wild.html'">🌿 野生記録</button>
     </nav>
@@ -317,9 +318,9 @@
                 
                 <label for="facilityNames">施設名（複数可）*</label>
                 <textarea id="facilityNames" placeholder="例：&#10;上野動物園&#10;多摩動物公園&#10;&#10;※複数の施設を入力する場合は、1行に1つずつ記入してください。" required></textarea>
-                <p class="hint">※複数の施設を入力する場合は、1行に1つずつ記入してください。同じ動物を違う施設で見た場合などに便利です。</p>
-                
-                <label for="visitDate">訪問日 *</label>
+                <p class="hint">※複数の施設を入力する場合は、1行に1つずつ記入してください。同じ動物を違う施設で見た場合などに便利です。施設ごとの訪問日は「🏛️ 施設訪問記録」ページで管理してください。</p>
+
+                <label for="visitDate">最終見学日 *</label>
                 <input type="date" id="visitDate" required>
                 
                 <label for="animalNames">生き物の名前（複数可）*</label>

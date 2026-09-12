@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#667eea">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.svg?v=3">
-    <title>生き物記録帳 - 見られなかった記録</title>
+    <title>生き物記録帳 - 施設訪問記録</title>
     <style>
         * {
             box-sizing: border-box;
@@ -392,14 +392,6 @@
             white-space: nowrap;
         }
 
-        .facility-item {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            font-size: 12px;
-        }
-
         @media (max-width: 768px) {
             .main-container {
                 margin: 15px auto;
@@ -463,7 +455,7 @@
                 word-break: break-all;
             }
 
-            /* 1列目：生き物の名前（大きく） */
+            /* 1列目：施設名（大きく） */
             .master-table tr td:first-child {
                 font-size: 15px;
                 font-weight: 700;
@@ -474,33 +466,23 @@
             }
 
             /* 施設の種類（バッジ風） */
-            .master-table tr td:nth-child(4) {
+            .master-table tr td:nth-child(2) {
                 order: 1;
                 flex: 0 0 auto;
                 font-size: 11px;
             }
 
             /* 操作ボタン */
-            .master-table tr td:nth-child(8) {
+            .master-table tr td:nth-child(4) {
                 order: 1;
                 flex: 0 0 auto;
                 font-size: 12px;
             }
 
-            /* 目・科・施設名 */
-            .master-table tr td:nth-child(2),
-            .master-table tr td:nth-child(3),
-            .master-table tr td:nth-child(5) {
-                order: 2;
-                flex: 0 1 47%;
-                font-size: 12px;
-            }
-
             /* 訪問日・備考 */
-            .master-table tr td:nth-child(6),
-            .master-table tr td:nth-child(7) {
-                order: 3;
-                flex: 0 1 47%;
+            .master-table tr td:nth-child(3) {
+                order: 2;
+                flex: 0 1 100%;
                 font-size: 12px;
             }
 
@@ -567,44 +549,33 @@
     <div class="main-container">
         <!-- 入力フォーム -->
         <div class="form-section">
-            <h2>❓ 見られなかった記録</h2>
-            <p class="hint">展示されているはずなのに、実際には見られなかった生き物を記録しておくおまけページです。</p>
-            <form id="missForm">
-                <input type="hidden" id="missEntryId">
+            <h2>🏛️ 施設訪問記録</h2>
+            <p class="hint">動物園・水族館に訪問した日を記録するページです。生き物の記録の「最終見学日」とは別に、施設ごとの訪問履歴をここで管理できます。</p>
+            <form id="facilityForm">
+                <input type="hidden" id="facilityEntryId">
 
                 <label>施設の種類 *</label>
                 <div class="facility-type">
                     <label>
-                        <input type="radio" name="missFacilityType" value="動物園" checked> 動物園
+                        <input type="radio" name="facilityVisitType" value="動物園" checked> 動物園
                     </label>
                     <label>
-                        <input type="radio" name="missFacilityType" value="水族館"> 水族館
+                        <input type="radio" name="facilityVisitType" value="水族館"> 水族館
                     </label>
                 </div>
 
-                <label for="missFacilityNames">施設名（複数可）*</label>
-                <textarea id="missFacilityNames" placeholder="例：&#10;上野動物園&#10;&#10;※複数の施設を入力する場合は、1行に1つずつ記入してください。" required></textarea>
+                <label for="facilityVisitNames">施設名（複数可）*</label>
+                <textarea id="facilityVisitNames" placeholder="例：&#10;上野動物園&#10;&#10;※同じ日に複数の施設を訪問した場合は、1行に1つずつ記入してください。" required></textarea>
 
-                <label for="missVisitDate">訪問日 *</label>
-                <input type="date" id="missVisitDate" required>
+                <label for="facilityVisitDate">訪問日 *</label>
+                <input type="date" id="facilityVisitDate" required>
 
-                <label for="missAnimalNames">見られなかった生き物の名前（複数可）*</label>
-                <textarea id="missAnimalNames" placeholder="例：&#10;オオアリクイ&#10;&#10;※1行に1つずつ入力してください" required></textarea>
-
-                <label for="missOrder">目（もく）</label>
-                <input type="text" id="missOrder" list="missOrderList" placeholder="入力または選択">
-                <datalist id="missOrderList"></datalist>
-
-                <label for="missFamily">科</label>
-                <input type="text" id="missFamily" list="missFamilyList" placeholder="入力または選択">
-                <datalist id="missFamilyList"></datalist>
-
-                <label for="missNotes">備考</label>
-                <textarea id="missNotes" placeholder="見られなかった理由、次回のリベンジメモなど"></textarea>
+                <label for="facilityVisitNotes">備考</label>
+                <textarea id="facilityVisitNotes" placeholder="感想、混雑状況など"></textarea>
 
                 <div class="button-group">
-                    <button type="submit" id="missSubmitBtn" class="btn-primary">登録する</button>
-                    <button type="button" id="missCancelBtn" class="btn-secondary" style="display: none;" onclick="cancelMissEdit()">キャンセル</button>
+                    <button type="submit" id="facilitySubmitBtn" class="btn-primary">登録する</button>
+                    <button type="button" id="facilityCancelBtn" class="btn-secondary" style="display: none;" onclick="cancelFacilityEdit()">キャンセル</button>
                 </div>
             </form>
         </div>
@@ -614,42 +585,41 @@
             <h2>🔍 検索・絞り込み</h2>
             <div class="filter-row">
                 <div class="filter-item">
-                    <label for="missSearchName">生き物の名前（あいまい検索）</label>
-                    <input type="text" id="missSearchName" placeholder="例：オオアリクイ">
+                    <label for="facilitySearchName">施設名（あいまい検索）</label>
+                    <input type="text" id="facilitySearchName" placeholder="例：上野動物園">
                 </div>
                 <div class="filter-item">
-                    <label for="missFilterFacility">施設名</label>
-                    <select id="missFilterFacility">
+                    <label for="facilityFilterType">施設の種類</label>
+                    <select id="facilityFilterType">
                         <option value="">すべて</option>
+                        <option value="動物園">動物園</option>
+                        <option value="水族館">水族館</option>
                     </select>
                 </div>
             </div>
             <div class="filter-buttons">
-                <button class="btn-filter" onclick="applyMissFilter()">🔍 検索</button>
-                <button class="btn-reset" onclick="resetMissFilter()">🔄 リセット</button>
+                <button class="btn-filter" onclick="applyFacilityFilter()">🔍 検索</button>
+                <button class="btn-reset" onclick="resetFacilityFilter()">🔄 リセット</button>
             </div>
         </div>
 
         <!-- 一覧 -->
         <div class="form-section">
-            <h2>📋 見られなかった記録一覧</h2>
-            <div class="entry-count" id="missEntryCount">0件</div>
+            <h2>📋 施設訪問記録一覧</h2>
+            <div class="entry-count" id="facilityEntryCount">0件</div>
             <table class="master-table">
                 <thead>
                     <tr>
-                        <th>生き物の名前</th>
-                        <th>目</th>
-                        <th>科</th>
-                        <th>施設の種類</th>
                         <th>施設名</th>
+                        <th>施設の種類</th>
                         <th>訪問日</th>
                         <th>備考</th>
                         <th>アクション</th>
                     </tr>
                 </thead>
-                <tbody id="missList"></tbody>
+                <tbody id="facilityList"></tbody>
             </table>
-            <div class="pagination" id="missPagination"></div>
+            <div class="pagination" id="facilityPagination"></div>
         </div>
     </div>
 
@@ -669,7 +639,7 @@
         firebase.initializeApp(firebaseConfig);
     </script>
     <script src="auth.js"></script>
-    <script src="miss.js"></script>
+    <script src="facilities.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
