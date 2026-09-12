@@ -11,6 +11,9 @@ let filteredRecords = [];
 
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', function() {
+    // 応急処置：盛岡動物園の見学日を一括で7/24に修正（一度だけ実行）
+    applyMoriokaZooDateFix();
+
     // ページによって処理を分岐
     const isListPage = document.getElementById('animalList') !== null;
     const isFormPage = document.getElementById('animalForm') !== null;
@@ -226,6 +229,62 @@ function syncFacilityVisits(facilityType, facilityNames, visitDate) {
     } catch (e) {
         console.error('施設訪問記録の自動登録に失敗しました:', e);
     }
+}
+
+// 応急処置：旧データ移行で「盛岡動物園」に紐づいてしまった見学日を、
+// 一括で2026-07-24に修正する（一度だけ実行し、以降は何もしない）
+const MORIOKA_FIX_KEY = 'zoo_morioka_zoo_date_fix_v1';
+const MORIOKA_FIX_TARGET_FACILITY = '盛岡動物園';
+const MORIOKA_FIX_DATE = '2026-07-24';
+
+function applyMoriokaZooDateFix() {
+    if (localStorage.getItem(MORIOKA_FIX_KEY)) return;
+
+    // 生き物記録側の見学記録を修正
+    const records = getRecords();
+    let recordsChanged = false;
+    records.forEach(record => {
+        record.visits.forEach(visit => {
+            if (visit.facilityName === MORIOKA_FIX_TARGET_FACILITY && visit.visitDate !== MORIOKA_FIX_DATE) {
+                visit.visitDate = MORIOKA_FIX_DATE;
+                recordsChanged = true;
+            }
+        });
+    });
+    if (recordsChanged) saveRecords(records);
+
+    // 施設訪問記録側も同じ施設名なら日付を1つにまとめる
+    try {
+        const data = localStorage.getItem(FACILITY_VISITS_STORAGE_KEY);
+        const facilityRecords = data ? JSON.parse(data) : [];
+        let facilityChanged = false;
+        facilityRecords.forEach(fr => {
+            if (fr.facilityName === MORIOKA_FIX_TARGET_FACILITY) {
+                const dates = Array.isArray(fr.visitDates) ? fr.visitDates : (fr.visitDate ? [fr.visitDate] : []);
+                if (dates.length !== 1 || dates[0] !== MORIOKA_FIX_DATE) {
+                    fr.visitDates = [MORIOKA_FIX_DATE];
+                    delete fr.visitDate;
+                    fr.updatedAt = new Date().toISOString();
+                    facilityChanged = true;
+                }
+            }
+        });
+        if (facilityChanged) {
+            localStorage.setItem(FACILITY_VISITS_STORAGE_KEY, JSON.stringify(facilityRecords));
+            if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                const recordsObj = {};
+                facilityRecords.forEach((record, index) => {
+                    recordsObj[record.id || `record_${index}`] = record;
+                });
+                firebase.database().ref('facility_visits').set(recordsObj)
+                    .catch(e => console.error('Firebase(facility_visits) 保存エラー:', e));
+            }
+        }
+    } catch (e) {
+        console.error('施設訪問記録の盛岡動物園修正に失敗しました:', e);
+    }
+
+    localStorage.setItem(MORIOKA_FIX_KEY, 'true');
 }
 
 // 詳細ページへ移動
