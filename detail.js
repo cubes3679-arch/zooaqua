@@ -89,8 +89,9 @@ async function handleAnimalInfoSubmit(e) {
     record.order = order;
     record.family = family;
     record.updatedAt = new Date().toISOString();
-    saveRecords(records);
-    loadDetailRecord();
+    // クラウドへの保存が終わるのを待ってから一覧へ戻る
+    await saveRecords(records);
+    window.location.href = 'index.html';
 }
 
 // 見学記録の追加・更新

@@ -237,6 +237,21 @@
             font-size: 13px;
         }
 
+        .master-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .master-table th.sortable:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .sort-icon {
+            font-size: 10px;
+            display: inline-block;
+            width: 10px;
+        }
+
         .master-table td {
             padding: 12px;
             border-bottom: 1px solid #f0f0f0;
@@ -566,8 +581,8 @@
                 <thead>
                     <tr>
                         <th>生き物の名前</th>
-                        <th>目</th>
-                        <th>科</th>
+                        <th class="sortable" onclick="sortBy('order')">目 <span id="sortIcon-order" class="sort-icon"></span></th>
+                        <th class="sortable" onclick="sortBy('family')">科 <span id="sortIcon-family" class="sort-icon"></span></th>
                         <th>アクション</th>
                     </tr>
                 </thead>

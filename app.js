@@ -9,6 +9,10 @@ const ITEMS_PER_PAGE = 20;
 let currentPage = 1;
 let filteredRecords = [];
 
+// 並び替え設定（目・科の列見出しクリックで切り替える）
+let sortField = null; // 'order' | 'family' | null（並び替えなし＝登録順）
+let sortDirection = 'asc';
+
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', function() {
     // ページによって処理を分岐
@@ -275,6 +279,37 @@ function resetFilter() {
     loadRecords();
 }
 
+// 目・科の見出しクリックによる並び替え
+// 同じ列を続けてクリックすると 昇順 → 降順 → 並び替えなし（登録順）の順に切り替わる
+function sortBy(field) {
+    if (sortField === field) {
+        if (sortDirection === 'asc') {
+            sortDirection = 'desc';
+        } else {
+            sortField = null;
+            sortDirection = 'asc';
+        }
+    } else {
+        sortField = field;
+        sortDirection = 'asc';
+    }
+    currentPage = 1;
+    loadRecords();
+}
+
+// 見出しの並び替えアイコンを現在の状態に合わせて更新する
+function updateSortIndicators() {
+    ['order', 'family'].forEach(field => {
+        const el = document.getElementById(`sortIcon-${field}`);
+        if (!el) return;
+        if (sortField === field) {
+            el.textContent = sortDirection === 'asc' ? '▲' : '▼';
+        } else {
+            el.textContent = '';
+        }
+    });
+}
+
 // datalistとselectの更新
 function updateDatalists() {
     const records = getRecords();
@@ -347,6 +382,21 @@ function loadRecords() {
         }
         return true;
     });
+
+    // 並び替え（目・科の見出しクリックで指定した場合のみ。それ以外は登録順のまま）
+    if (sortField) {
+        filteredRecords.sort((a, b) => {
+            const va = (a[sortField] || '').trim();
+            const vb = (b[sortField] || '').trim();
+            if (!va && !vb) return 0;
+            if (!va) return 1; // 未入力は常に最後
+            if (!vb) return -1;
+            const cmp = va.localeCompare(vb, 'ja');
+            return sortDirection === 'asc' ? cmp : -cmp;
+        });
+    }
+
+    updateSortIndicators();
 
     // ページネーション
     const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
