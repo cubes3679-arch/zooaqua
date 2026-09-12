@@ -392,6 +392,20 @@
             white-space: nowrap;
         }
 
+        .facility-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .facility-item {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 margin: 15px auto;
@@ -566,6 +580,7 @@
 
                 <label for="facilityVisitNames">施設名（複数可）*</label>
                 <textarea id="facilityVisitNames" placeholder="例：&#10;上野動物園&#10;&#10;※同じ日に複数の施設を訪問した場合は、1行に1つずつ記入してください。" required></textarea>
+                <p class="hint">※既に登録済みの施設名を入力すると、新しい行を作らずに訪問日だけが追加されます（過去の訪問日は残ります）。</p>
 
                 <label for="facilityVisitDate">訪問日 *</label>
                 <input type="date" id="facilityVisitDate" required>

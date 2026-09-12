@@ -190,17 +190,29 @@ const FACILITY_VISITS_STORAGE_KEY = 'zoo_facility_visits';
 function syncFacilityVisits(facilityType, facilityNames, visitDate) {
     try {
         const data = localStorage.getItem(FACILITY_VISITS_STORAGE_KEY);
-        const facilityRecords = data ? JSON.parse(data) : [];
+        const facilityRecords = (data ? JSON.parse(data) : []).map(record => {
+            if (!Array.isArray(record.visitDates)) {
+                record.visitDates = record.visitDate ? [record.visitDate] : [];
+                delete record.visitDate;
+            }
+            return record;
+        });
         let changed = false;
 
         facilityNames.forEach(facilityName => {
-            const alreadyLogged = facilityRecords.some(r => r.facilityName === facilityName && r.visitDate === visitDate);
-            if (!alreadyLogged) {
+            const existing = facilityRecords.find(r => r.facilityName === facilityName);
+            if (existing) {
+                if (!existing.visitDates.includes(visitDate)) {
+                    existing.visitDates.push(visitDate);
+                    existing.updatedAt = new Date().toISOString();
+                    changed = true;
+                }
+            } else {
                 facilityRecords.unshift({
                     id: Date.now().toString() + '_' + Math.random().toString(36).slice(2, 6),
                     facilityName,
                     facilityType,
-                    visitDate,
+                    visitDates: [visitDate],
                     notes: '',
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()

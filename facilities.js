@@ -39,21 +39,52 @@ function handleFacilitySubmit(e) {
     const records = getFacilityRecords();
 
     if (id) {
+        // 編集モード：施設名・種類・備考を更新し、訪問日は既存の記録に追加する（過去の訪問日は消さない）
         const index = records.findIndex(r => r.id == id);
-        if (index !== -1) records.splice(index, 1);
-    }
-
-    facilityNames.forEach((facilityName, fIndex) => {
-        records.unshift({
-            id: (id && facilityNames.length === 1) ? id : Date.now().toString() + '_' + fIndex + '_' + Math.random().toString(36).slice(2, 6),
-            facilityName,
-            facilityType,
-            visitDate,
-            notes,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+        const target = index !== -1 ? records[index] : null;
+        if (target) {
+            const newName = facilityNames[0];
+            const collision = records.find(r => r.id !== id && r.facilityName === newName);
+            if (collision) {
+                // 変更後の施設名が別の記録と同じ場合は、両方の訪問日を統合する
+                records.splice(index, 1);
+                target.visitDates.forEach(d => {
+                    if (!collision.visitDates.includes(d)) collision.visitDates.push(d);
+                });
+                if (!collision.visitDates.includes(visitDate)) collision.visitDates.push(visitDate);
+                collision.facilityType = facilityType;
+                if (notes) collision.notes = notes;
+                collision.updatedAt = new Date().toISOString();
+            } else {
+                target.facilityName = newName;
+                target.facilityType = facilityType;
+                if (!target.visitDates.includes(visitDate)) target.visitDates.push(visitDate);
+                target.notes = notes;
+                target.updatedAt = new Date().toISOString();
+            }
+        }
+    } else {
+        // 新規登録：同じ施設名の記録が既にあれば訪問日だけ追加し、なければ新規作成する
+        facilityNames.forEach((facilityName, fIndex) => {
+            const existing = records.find(r => r.facilityName === facilityName);
+            if (existing) {
+                if (!existing.visitDates.includes(visitDate)) existing.visitDates.push(visitDate);
+                existing.facilityType = facilityType;
+                if (notes) existing.notes = notes;
+                existing.updatedAt = new Date().toISOString();
+            } else {
+                records.unshift({
+                    id: Date.now().toString() + '_' + fIndex + '_' + Math.random().toString(36).slice(2, 6),
+                    facilityName,
+                    facilityType,
+                    visitDates: [visitDate],
+                    notes,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            }
         });
-    });
+    }
 
     saveFacilityRecords(records);
     resetFacilityForm();
@@ -67,7 +98,8 @@ function editFacilityRecord(id) {
 
     document.getElementById('facilityEntryId').value = record.id;
     document.getElementById('facilityVisitNames').value = record.facilityName;
-    document.getElementById('facilityVisitDate').value = record.visitDate;
+    const latestDate = record.visitDates.length > 0 ? record.visitDates.reduce((max, d) => d > max ? d : max) : '';
+    document.getElementById('facilityVisitDate').value = latestDate;
     document.getElementById('facilityVisitNotes').value = record.notes || '';
 
     const radios = document.querySelectorAll('input[name="facilityVisitType"]');
@@ -123,8 +155,9 @@ function loadFacilityRecords() {
         return true;
     });
 
-    // 訪問日が新しい順に並べ替え
-    facilityFilteredRecords.sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''));
+    // 最新の訪問日が新しい順に並べ替え
+    const latestOf = r => r.visitDates.length > 0 ? r.visitDates.reduce((max, d) => d > max ? d : max) : '';
+    facilityFilteredRecords.sort((a, b) => latestOf(b).localeCompare(latestOf(a)));
 
     const totalPages = Math.ceil(facilityFilteredRecords.length / FACILITY_ITEMS_PER_PAGE);
     if (facilityCurrentPage > totalPages) facilityCurrentPage = Math.max(1, totalPages);
@@ -151,10 +184,11 @@ function renderFacilityList(records) {
     tbody.innerHTML = records.map(record => {
         const badgeClass = record.facilityType === '動物園' ? 'badge-zoo' :
                           record.facilityType === '水族館' ? 'badge-aquarium' : 'badge-etc';
+        const sortedDates = [...record.visitDates].sort().reverse();
         return `<tr>
             <td><strong>${escapeFacilityHtml(record.facilityName)}</strong></td>
             <td><span class="badge ${badgeClass}">${record.facilityType}</span></td>
-            <td>${record.visitDate || '-'}</td>
+            <td><div class="facility-list">${sortedDates.map(d => `<span class="facility-item">${d}</span>`).join('') || '-'}</div></td>
             <td class="notes-cell" title="${escapeFacilityHtml(record.notes || '')}">${escapeFacilityHtml(record.notes || '-')}</td>
             <td class="action-buttons">
                 <button class="btn-edit" onclick="editFacilityRecord('${record.id}')">編集</button>
@@ -212,11 +246,56 @@ function escapeFacilityHtml(str) {
 function getFacilityRecords() {
     try {
         const data = localStorage.getItem(FACILITY_STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
+        const records = (data ? JSON.parse(data) : []).map(normalizeFacilityRecord);
+        const { merged, changed } = consolidateDuplicateFacilities(records);
+        if (changed) {
+            saveFacilityRecords(merged);
+            return merged;
+        }
+        return records;
     } catch (e) {
         console.error('施設訪問記録の取得に失敗しました:', e);
         return [];
     }
+}
+
+// 旧データ形式（visitDate単一文字列）をvisitDates配列に変換
+function normalizeFacilityRecord(record) {
+    if (!Array.isArray(record.visitDates)) {
+        record.visitDates = record.visitDate ? [record.visitDate] : [];
+        delete record.visitDate;
+    }
+    return record;
+}
+
+// 過去に別々に登録された同じ施設名の記録を1件に統合する（既存データ向けの一括統合）
+function consolidateDuplicateFacilities(records) {
+    const merged = [];
+    const indexByName = new Map();
+    let changed = false;
+
+    records.forEach(record => {
+        const existingIndex = indexByName.get(record.facilityName);
+        if (existingIndex === undefined) {
+            indexByName.set(record.facilityName, merged.length);
+            merged.push(record);
+            return;
+        }
+
+        changed = true;
+        const target = merged[existingIndex];
+
+        record.visitDates.forEach(d => {
+            if (!target.visitDates.includes(d)) target.visitDates.push(d);
+        });
+        if (!target.facilityType && record.facilityType) target.facilityType = record.facilityType;
+        if (record.notes && record.notes !== target.notes) {
+            target.notes = target.notes ? `${target.notes}\n${record.notes}` : record.notes;
+        }
+        target.updatedAt = new Date().toISOString();
+    });
+
+    return { merged, changed };
 }
 
 function saveFacilityRecords(records) {
