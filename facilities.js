@@ -8,6 +8,7 @@ let facilityFilteredRecords = [];
 document.addEventListener('DOMContentLoaded', function() {
     initFacilityForm();
     loadFacilityRecords();
+    initFacilityFirebaseSync();
 });
 
 function initFacilityForm() {
@@ -343,12 +344,87 @@ function consolidateDuplicateFacilities(records) {
     return { merged, changed };
 }
 
-// 施設訪問記録の保存はローカルのみ。クラウドとの同期は記録一覧ページの
-// 「この端末を正にしてクラウドへ保存」「クラウドの内容で読み込み直す」で手動で行う
 function saveFacilityRecords(records) {
     try {
         localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(records));
     } catch (e) {
         console.error('施設訪問記録の保存に失敗しました:', e);
     }
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+        saveFacilityToFirebase(records);
+    }
+}
+
+// --- Firebase 同期（facility_visits コレクション） ---
+let facilityRecordsRef = null;
+
+function initFacilityFirebaseSync() {
+    if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return;
+    facilityRecordsRef = firebase.database().ref('facility_visits');
+
+    const checkAuthAndSync = setInterval(async () => {
+        if (sessionStorage.getItem('zoo_auth_authenticated') === 'true') {
+            clearInterval(checkAuthAndSync);
+            await syncFacilityWithFirebase();
+            loadFacilityRecords();
+        }
+    }, 100);
+
+    setInterval(syncFacilityWithFirebase, 5 * 60 * 1000);
+}
+
+async function loadFacilityFromFirebase() {
+    try {
+        const snapshot = await facilityRecordsRef.once('value');
+        const data = snapshot.val();
+        return data ? Object.values(data) : [];
+    } catch (e) {
+        console.error('Firebase(facility_visits) 読み込みエラー:', e);
+        return [];
+    }
+}
+
+async function saveFacilityToFirebase(records) {
+    try {
+        if (!facilityRecordsRef) return;
+        const recordsObj = {};
+        records.forEach((record, index) => {
+            recordsObj[record.id || `record_${index}`] = record;
+        });
+        // undefinedが混ざっているとFirebaseへの書き込みが失敗するため、
+        // JSONを介して除去してから書き込む
+        const sanitized = JSON.parse(JSON.stringify(recordsObj));
+        await facilityRecordsRef.set(sanitized);
+    } catch (e) {
+        console.error('Firebase(facility_visits) 保存エラー:', e);
+    }
+}
+
+// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
+// 両方にあるものはupdatedAt/createdAtが新しい方を採用する）
+function mergeFacilityRecordsById(recordsA, recordsB) {
+    const byId = new Map();
+    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
+    recordsB.forEach(r => {
+        if (!r || !r.id) return;
+        const existing = byId.get(r.id);
+        if (!existing) {
+            byId.set(r.id, r);
+            return;
+        }
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
+        byId.set(r.id, otherTime > existingTime ? r : existing);
+    });
+    return Array.from(byId.values());
+}
+
+async function syncFacilityWithFirebase() {
+    const localRecords = getFacilityRecords();
+    const firebaseRecords = await loadFacilityFromFirebase();
+
+    const merged = mergeFacilityRecordsById(localRecords, firebaseRecords);
+
+    localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(merged));
+    await saveFacilityToFirebase(merged);
 }

@@ -217,6 +217,15 @@ function syncFacilityVisits(facilityType, facilityNames, visitDate) {
         if (!changed) return;
 
         localStorage.setItem(FACILITY_VISITS_STORAGE_KEY, JSON.stringify(facilityRecords));
+
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            const recordsObj = {};
+            facilityRecords.forEach((record, index) => {
+                recordsObj[record.id || `record_${index}`] = record;
+            });
+            firebase.database().ref('facility_visits').set(recordsObj)
+                .catch(e => console.error('Firebase(facility_visits) 保存エラー:', e));
+        }
     } catch (e) {
         console.error('施設訪問記録の自動登録に失敗しました:', e);
     }
@@ -276,6 +285,14 @@ function applyMoriokaZooDateFix() {
         });
         if (facilityChanged) {
             localStorage.setItem(FACILITY_VISITS_STORAGE_KEY, JSON.stringify(facilityRecords));
+            if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                const recordsObj = {};
+                facilityRecords.forEach((record, index) => {
+                    recordsObj[record.id || `record_${index}`] = record;
+                });
+                firebase.database().ref('facility_visits').set(recordsObj)
+                    .catch(e => console.error('Firebase(facility_visits) 保存エラー:', e));
+            }
         }
     } catch (e) {
         console.error('施設訪問記録の盛岡動物園修正に失敗しました:', e);
