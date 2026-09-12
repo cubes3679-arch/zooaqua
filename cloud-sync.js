@@ -53,89 +53,9 @@ async function saveToFirebase(records) {
     }
 }
 
-// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
-// 両方にあるものは updatedAt/createdAt が新しい方を採用する）
-// これにより、片方の端末にしか無い新規レコードが同期のたびに
-// 丸ごと消えてしまうことを防ぐ
-function mergeRecordsById(recordsA, recordsB) {
-    const byId = new Map();
-    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
-    recordsB.forEach(r => {
-        if (!r || !r.id) return;
-        const existing = byId.get(r.id);
-        if (!existing) {
-            byId.set(r.id, r);
-            return;
-        }
-        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
-        byId.set(r.id, otherTime > existingTime ? r : existing);
-    });
-    return Array.from(byId.values());
-}
-
-// ローカルストレージと Firebase の同期（idベースのマージ）
-async function syncWithFirebase() {
-    console.log('同期開始...');
-
-    // ローカルデータを取得
-    const localData = localStorage.getItem('zoo_animal_records');
-    const localRecords = localData ? JSON.parse(localData) : [];
-    console.log('ローカルレコード数:', localRecords.length);
-
-    // Firebase からデータを取得
-    const firebaseRecords = await loadFromFirebase();
-    console.log('Firebase レコード数:', firebaseRecords.length);
-
-    const merged = mergeRecordsById(localRecords, firebaseRecords);
-    console.log('マージ後レコード数:', merged.length);
-
-    localStorage.setItem('zoo_animal_records', JSON.stringify(merged));
-    await saveToFirebase(merged);
-
-    console.log('同期完了。最終レコード数:', merged.length);
-    return merged;
-}
-
-// ページ読み込み後に saveRecords をラップして Firebase 同期を有効化
-document.addEventListener('DOMContentLoaded', async function() {
-    // saveRecords をラップして Firebase にも保存するようにする
-    const originalSaveRecords = window.saveRecords;
-    if (typeof originalSaveRecords === 'function') {
-        window.saveRecords = async function(records) {
-            // ローカルに保存（元々の機能）
-            originalSaveRecords(records);
-            // Firebase にも保存
-            await saveToFirebase(records);
-        };
-        console.log('saveRecords を Firebase 同期付きでラップしました');
-    } else {
-        console.warn('saveRecords 関数が見つかりませんでした。app.js の確認が必要です。');
-    }
-
-    // 認証完了を待つ（auth.js が sessionStorage にフラグを設定）
-    const checkAuthAndSync = setInterval(async () => {
-        if (sessionStorage.getItem('zoo_auth_authenticated') === 'true') {
-            clearInterval(checkAuthAndSync);
-            const records = await syncWithFirebase();
-            console.log('Cloud sync completed');
-
-            // 一覧ページの場合、データを読み込み直す
-            if (typeof loadRecords === 'function') {
-                loadRecords();
-            }
-        }
-    }, 100);
-});
-
-// 5分ごとに自動同期
-setInterval(async () => {
-    await syncWithFirebase();
-}, 5 * 60 * 1000); // 5分
-
-// --- 強制同期（この端末を「正」としてクラウドに反映する／クラウドの内容で
-// この端末を上書きする）。自動マージがうまく動いていないように見えるときの
-// 手動リカバリー手段として使う ---
+// --- 手動同期（この端末を「正」としてクラウドに反映する／クラウドの内容で
+// この端末を上書きする）。自動同期は行わず、ボタンを押したときだけ
+// クラウドとやり取りする ---
 
 function getFacilityVisitsForSync() {
     try {
