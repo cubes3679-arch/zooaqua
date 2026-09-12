@@ -399,11 +399,34 @@
         }
 
         .facility-item {
-            display: inline-block;
-            padding: 2px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 4px 2px 8px;
             background: #f0f0f0;
             border-radius: 10px;
             font-size: 12px;
+        }
+
+        .date-edit-btn,
+        .date-delete-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 11px;
+            line-height: 1;
+            padding: 2px 3px;
+            border-radius: 6px;
+            color: #667eea;
+        }
+
+        .date-edit-btn:hover,
+        .date-delete-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .date-delete-btn {
+            color: #e74c3c;
         }
 
         @media (max-width: 768px) {

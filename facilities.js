@@ -119,6 +119,45 @@ function deleteFacilityRecord(id) {
     loadFacilityRecords();
 }
 
+// 特定の1つの訪問日だけを削除する
+function deleteFacilityVisitDate(id, date) {
+    const records = getFacilityRecords();
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+
+    if (!confirm(`「${record.facilityName}」の${date}の訪問日を削除しますか？`)) return;
+
+    record.visitDates = record.visitDates.filter(d => d !== date);
+    record.updatedAt = new Date().toISOString();
+    saveFacilityRecords(records);
+    loadFacilityRecords();
+}
+
+// 特定の1つの訪問日だけを修正する
+function editFacilityVisitDate(id, oldDate) {
+    const records = getFacilityRecords();
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+
+    const newDate = prompt('訪問日を修正してください（YYYY-MM-DD形式）', oldDate);
+    if (!newDate || newDate === oldDate) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        alert('日付はYYYY-MM-DD形式で入力してください。');
+        return;
+    }
+    if (record.visitDates.includes(newDate)) {
+        alert('その訪問日は既に登録されています。');
+        return;
+    }
+
+    const index = record.visitDates.indexOf(oldDate);
+    if (index !== -1) record.visitDates[index] = newDate;
+    record.updatedAt = new Date().toISOString();
+    saveFacilityRecords(records);
+    loadFacilityRecords();
+}
+
 function cancelFacilityEdit() {
     resetFacilityForm();
 }
@@ -185,10 +224,17 @@ function renderFacilityList(records) {
         const badgeClass = record.facilityType === '動物園' ? 'badge-zoo' :
                           record.facilityType === '水族館' ? 'badge-aquarium' : 'badge-etc';
         const sortedDates = [...record.visitDates].sort().reverse();
+        const dateBadges = sortedDates.map(d => `
+            <span class="facility-item">
+                ${d}
+                <button class="date-edit-btn" onclick="editFacilityVisitDate('${record.id}', '${d}')" title="この日付を修正">✎</button>
+                <button class="date-delete-btn" onclick="deleteFacilityVisitDate('${record.id}', '${d}')" title="この日付を削除">✕</button>
+            </span>
+        `).join('');
         return `<tr>
             <td><strong>${escapeFacilityHtml(record.facilityName)}</strong></td>
             <td><span class="badge ${badgeClass}">${record.facilityType}</span></td>
-            <td><div class="facility-list">${sortedDates.map(d => `<span class="facility-item">${d}</span>`).join('') || '-'}</div></td>
+            <td><div class="facility-list">${dateBadges || '-'}</div></td>
             <td class="notes-cell" title="${escapeFacilityHtml(record.notes || '')}">${escapeFacilityHtml(record.notes || '-')}</td>
             <td class="action-buttons">
                 <button class="btn-edit" onclick="editFacilityRecord('${record.id}')">編集</button>
