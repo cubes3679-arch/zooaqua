@@ -50,48 +50,48 @@ async function saveToFirebase(records) {
     }
 }
 
-// ローカルストレージと Firebase の同期
+// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
+// 両方にあるものは updatedAt/createdAt が新しい方を採用する）
+// これにより、片方の端末にしか無い新規レコードが同期のたびに
+// 丸ごと消えてしまうことを防ぐ
+function mergeRecordsById(recordsA, recordsB) {
+    const byId = new Map();
+    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
+    recordsB.forEach(r => {
+        if (!r || !r.id) return;
+        const existing = byId.get(r.id);
+        if (!existing) {
+            byId.set(r.id, r);
+            return;
+        }
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
+        byId.set(r.id, otherTime > existingTime ? r : existing);
+    });
+    return Array.from(byId.values());
+}
+
+// ローカルストレージと Firebase の同期（idベースのマージ）
 async function syncWithFirebase() {
     console.log('同期開始...');
-    
+
     // ローカルデータを取得
     const localData = localStorage.getItem('zoo_animal_records');
     const localRecords = localData ? JSON.parse(localData) : [];
     console.log('ローカルレコード数:', localRecords.length);
-    
+
     // Firebase からデータを取得
     const firebaseRecords = await loadFromFirebase();
     console.log('Firebase レコード数:', firebaseRecords.length);
-    
-    // どちらが最新か比較（タイムスタンプで）
-    const localLatest = localRecords.reduce((latest, record) => {
-        const recordTime = new Date(record.updatedAt || record.createdAt || 0).getTime();
-        return recordTime > latest ? recordTime : latest;
-    }, 0);
-    
-    const firebaseLatest = firebaseRecords.reduce((latest, record) => {
-        const recordTime = new Date(record.updatedAt || record.createdAt || 0).getTime();
-        return recordTime > latest ? recordTime : latest;
-    }, 0);
-    
-    console.log('ローカル最新時刻:', localLatest, 'Firebase 最新時刻:', firebaseLatest);
-    
-    // 新しい方を使用
-    let finalRecords;
-    if (localLatest >= firebaseLatest) {
-        console.log('ローカルデータを使用');
-        finalRecords = localRecords;
-        // Firebase に保存
-        await saveToFirebase(finalRecords);
-    } else {
-        console.log('Firebase データを使用');
-        finalRecords = firebaseRecords;
-        // ローカルに保存
-        localStorage.setItem('zoo_animal_records', JSON.stringify(finalRecords));
-    }
-    
-    console.log('同期完了。最終レコード数:', finalRecords.length);
-    return finalRecords;
+
+    const merged = mergeRecordsById(localRecords, firebaseRecords);
+    console.log('マージ後レコード数:', merged.length);
+
+    localStorage.setItem('zoo_animal_records', JSON.stringify(merged));
+    await saveToFirebase(merged);
+
+    console.log('同期完了。最終レコード数:', merged.length);
+    return merged;
 }
 
 // ページ読み込み後に saveRecords をラップして Firebase 同期を有効化

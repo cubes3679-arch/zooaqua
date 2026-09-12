@@ -397,16 +397,31 @@ async function saveFacilityToFirebase(records) {
     }
 }
 
+// id単位でレコードをマージする（どちらか片方にしか無いものは残す。
+// 両方にあるものはupdatedAt/createdAtが新しい方を採用する）
+function mergeFacilityRecordsById(recordsA, recordsB) {
+    const byId = new Map();
+    recordsA.forEach(r => { if (r && r.id) byId.set(r.id, r); });
+    recordsB.forEach(r => {
+        if (!r || !r.id) return;
+        const existing = byId.get(r.id);
+        if (!existing) {
+            byId.set(r.id, r);
+            return;
+        }
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const otherTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
+        byId.set(r.id, otherTime > existingTime ? r : existing);
+    });
+    return Array.from(byId.values());
+}
+
 async function syncFacilityWithFirebase() {
     const localRecords = getFacilityRecords();
     const firebaseRecords = await loadFacilityFromFirebase();
 
-    const localLatest = localRecords.reduce((latest, r) => Math.max(latest, new Date(r.updatedAt || r.createdAt || 0).getTime()), 0);
-    const firebaseLatest = firebaseRecords.reduce((latest, r) => Math.max(latest, new Date(r.updatedAt || r.createdAt || 0).getTime()), 0);
+    const merged = mergeFacilityRecordsById(localRecords, firebaseRecords);
 
-    if (localLatest >= firebaseLatest) {
-        await saveFacilityToFirebase(localRecords);
-    } else {
-        localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(firebaseRecords));
-    }
+    localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(merged));
+    await saveFacilityToFirebase(merged);
 }
