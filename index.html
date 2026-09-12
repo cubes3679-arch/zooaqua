@@ -523,16 +523,6 @@
     </nav>
 
     <div class="main-container">
-        <!-- 手動での強制同期 -->
-        <div class="filter-section">
-            <h2>☁️ 端末間の同期</h2>
-            <p class="hint">自動同期がうまくいっていないと感じたときに使う手動リカバリーです。「この端末を正にする」を押した端末のデータが正しいデータになるようにしてください。</p>
-            <div class="filter-buttons">
-                <button class="btn-filter" onclick="handleForcePush()">⬆️ この端末を正にしてクラウドへ保存</button>
-                <button class="btn-reset" onclick="handleForcePull()">⬇️ クラウドの内容で読み込み直す</button>
-            </div>
-        </div>
-
         <!-- 検索・フィルターセクション -->
         <div class="filter-section">
             <h2>🔍 検索・絞り込み</h2>
@@ -593,11 +583,7 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="auth.js"></script>
-    <script src="cloud-sync.js"></script>
     <script src="app.js"></script>
     <script>
         // Service Workerの登録
