@@ -304,8 +304,6 @@
         <div class="form-section">
             <h2>📝 生き物記録入力</h2>
             <form id="animalForm">
-                <input type="hidden" id="entryId">
-                
                 <label>施設の種類 *</label>
                 <div class="facility-type">
                     <label>
@@ -338,10 +336,10 @@
                 
                 <label for="notes">備考</label>
                 <textarea id="notes" placeholder="気づいたこと、感想など"></textarea>
-                
+                <p class="hint">※ここでの備考は、今回登録する施設・生き物すべてに共通のメモです。生き物ごと・見学記録ごとに個別の備考は、記録一覧の「詳細」ページで編集できます。</p>
+
                 <div class="button-group">
-                    <button type="submit" id="submitBtn" class="btn-primary">一括追加する</button>
-                    <button type="button" id="cancelBtn" class="btn-secondary" style="display: none;" onclick="cancelEdit()">キャンセル</button>
+                    <button type="submit" class="btn-primary">一括追加する</button>
                 </div>
             </form>
         </div>
@@ -364,38 +362,6 @@
                     console.log('ServiceWorker registration failed:', error);
                 });
         }
-    </script>
-    <script>
-        // URLパラメータから編集データを読み込む
-        document.addEventListener('DOMContentLoaded', function() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('editId')) {
-                document.getElementById('entryId').value = params.get('editId');
-                document.getElementById('animalNames').value = params.get('animalName');
-                document.getElementById('order').value = params.get('order') || '';
-                document.getElementById('family').value = params.get('family') || '';
-                
-                // 施設タイプのラジオボタン
-                const facilityType = params.get('facilityType');
-                if (facilityType) {
-                    const radios = document.querySelectorAll('input[name="facilityType"]');
-                    radios.forEach(radio => {
-                        radio.checked = radio.value === facilityType;
-                    });
-                }
-                
-                document.getElementById('facilityNames').value = params.get('facilityName');
-                document.getElementById('visitDate').value = params.get('visitDate');
-                document.getElementById('notes').value = params.get('notes') || '';
-                
-                document.getElementById('submitBtn').textContent = '更新する';
-                document.getElementById('cancelBtn').style.display = 'inline-block';
-                
-                // ページタイトルを変更
-                document.title = '生き物記録帳 - 編集';
-                document.querySelector('.form-section h2').textContent = '📝 生き物記録編集';
-            }
-        });
     </script>
 </body>
 </html>

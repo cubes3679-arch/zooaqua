@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="生き物記録">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.svg?v=3">
+    <title>生き物記録帳 - 詳細</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+
+        .navbar button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .navbar button:hover {
+            background: #5a6fd6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section h2 {
+            margin: 0 0 24px 0;
+            color: #333;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-section label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-section input[type="text"],
+        .form-section input[type="date"],
+        .form-section textarea {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-section input[type="text"]:focus,
+        .form-section input[type="date"]:focus,
+        .form-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-section textarea {
+            min-height: 70px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .form-row > div {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .facility-type {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .facility-type label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #f5f5f5;
+            transition: all 0.3s ease;
+        }
+
+        .facility-type label:hover {
+            background: #eee;
+        }
+
+        .facility-type label:has(input:checked) {
+            background: #667eea;
+            color: white;
+        }
+
+        .facility-type input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: -10px;
+            margin-bottom: 16px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .master-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .master-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .master-table th {
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .master-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .master-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .master-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-buttons button {
+            padding: 6px 14px;
+            font-size: 12px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #138496;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-zoo {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-aquarium {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .badge-etc {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .notes-cell {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .splash-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-screen.splash-hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-paws {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .splash-paws span {
+            font-size: 40px;
+            opacity: 0;
+            transform: scale(0.5) translateY(10px);
+            animation: pawPop 0.5s ease forwards;
+        }
+
+        .splash-paws span:nth-child(1) { animation-delay: 0s; }
+        .splash-paws span:nth-child(2) { animation-delay: 0.2s; }
+        .splash-paws span:nth-child(3) { animation-delay: 0.4s; }
+        .splash-paws span:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes pawPop {
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .splash-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+            animation-delay: 0.9s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 15px auto;
+                padding: 0 10px;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .navbar {
+                padding: 10px;
+            }
+
+            .navbar button {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+
+            /* スマホ用 - 見やすいカード表示 */
+            .master-table {
+                display: block;
+                font-size: 13px;
+            }
+
+            .master-table thead {
+                display: none;
+            }
+
+            .master-table tbody {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .master-table tr {
+                background: #f0f4ff;
+                border-radius: 10px;
+                padding: 10px 14px;
+                box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .master-table td {
+                display: flex;
+                align-items: center;
+                padding: 1px 0;
+                font-size: 13px;
+                line-height: 1.3;
+            }
+
+            .master-table td::before {
+                content: attr(data-label);
+                font-size: 10px;
+                color: #667eea;
+                margin-right: 6px;
+                font-weight: 600;
+                flex-shrink: 0;
+            }
+
+            .action-buttons {
+                justify-content: flex-end;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 起動スプラッシュアニメーション -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-paws">
+            <span>🐾</span><span>🐾</span><span>🐾</span><span>🐾</span>
+        </div>
+        <div class="splash-title">生き物記録帳</div>
+    </div>
+    <script>
+        (function() {
+            var splash = document.getElementById('splashScreen');
+            if (sessionStorage.getItem('zooaqua_splash_shown')) {
+                splash.style.display = 'none';
+                return;
+            }
+            sessionStorage.setItem('zooaqua_splash_shown', '1');
+            setTimeout(function() {
+                splash.classList.add('splash-hide');
+                setTimeout(function() {
+                    splash.style.display = 'none';
+                }, 500);
+            }, 1600);
+        })();
+    </script>
+
+    <!-- ナビゲーションバー -->
+    <nav class="navbar">
+        <button onclick="location.href='index.html'">📋 記録一覧</button>
+        <button onclick="location.href='list.html'">📝 新規入力</button>
+        <button onclick="location.href='facilities.html'">🏛️ 施設訪問記録</button>
+        <button onclick="location.href='miss.html'">❓ 見られなかった</button>
+        <button onclick="location.href='wild.html'">🌿 野生記録</button>
+    </nav>
+
+    <div class="main-container">
+        <!-- 動物の基本情報 -->
+        <div class="form-section">
+            <h2 id="detailTitle">🔍 詳細</h2>
+            <form id="animalInfoForm">
+                <label for="detailAnimalName">生き物の名前 *</label>
+                <input type="text" id="detailAnimalName" required>
+
+                <div class="form-row">
+                    <div>
+                        <label for="detailOrder">目（もく）</label>
+                        <input type="text" id="detailOrder" list="orderList" placeholder="入力または選択">
+                        <datalist id="orderList"></datalist>
+                    </div>
+                    <div>
+                        <label for="detailFamily">科</label>
+                        <input type="text" id="detailFamily" list="familyList" placeholder="入力または選択">
+                        <datalist id="familyList"></datalist>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">この内容を保存する</button>
+                    <button type="button" class="btn-secondary" onclick="location.href='index.html'">一覧に戻る</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 見学記録の追加・編集 -->
+        <div class="form-section">
+            <h2>📝 見学記録を追加</h2>
+            <p class="hint">この生き物を見た施設・日付・そのときの備考をそれぞれ記録できます。</p>
+            <form id="visitForm">
+                <input type="hidden" id="visitEntryId">
+
+                <label>施設の種類 *</label>
+                <div class="facility-type">
+                    <label>
+                        <input type="radio" name="visitFacilityType" value="動物園" checked> 動物園
+                    </label>
+                    <label>
+                        <input type="radio" name="visitFacilityType" value="水族館"> 水族館
+                    </label>
+                </div>
+
+                <label for="visitFacilityName">施設名 *</label>
+                <input type="text" id="visitFacilityName" placeholder="例：上野動物園" required>
+
+                <label for="visitDate">見学日 *</label>
+                <input type="date" id="visitDate" required>
+
+                <label for="visitNotes">備考</label>
+                <textarea id="visitNotes" placeholder="この施設・この日に見たときの気づき、感想など"></textarea>
+
+                <div class="button-group">
+                    <button type="submit" id="visitSubmitBtn" class="btn-primary">追加する</button>
+                    <button type="button" id="visitCancelBtn" class="btn-secondary" style="display: none;" onclick="cancelVisitEdit()">キャンセル</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 見学記録一覧 -->
+        <div class="form-section">
+            <h2>📋 見学記録一覧</h2>
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>施設の種類</th>
+                        <th>施設名</th>
+                        <th>見学日</th>
+                        <th>備考</th>
+                        <th>アクション</th>
+                    </tr>
+                </thead>
+                <tbody id="visitList"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="auth.js"></script>
+    <script src="cloud-sync.js"></script>
+    <script src="app.js"></script>
+    <script src="detail.js"></script>
+    <script>
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then((registration) => {
+                    console.log('ServiceWorker registered:', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('ServiceWorker registration failed:', error);
+                });
+        }
+    </script>
+</body>
+</html>
