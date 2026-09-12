@@ -109,7 +109,7 @@ function showDuplicateWarning() {
 }
 
 // フォーム送信ハンドラー（常に新規の見学記録を追加する。既存の動物なら見学記録が積み上がる）
-function handleSubmit(e) {
+async function handleSubmit(e) {
     e.preventDefault();
 
     const facilityType = document.querySelector('input[name="facilityType"]:checked').value;
@@ -168,10 +168,12 @@ function handleSubmit(e) {
         target.updatedAt = new Date().toISOString();
     });
 
-    saveRecords(records);
+    // クラウドへの保存が終わるのを待ってから画面遷移する
+    // （遷移が先に起きると、送信中のFirebaseへの書き込みが中断されてしまうことがある）
+    await saveRecords(records);
 
     // 施設訪問記録にも自動反映（同じ施設・同じ日の記録が無い場合のみ追加）
-    syncFacilityVisits(facilityType, facilityNames, visitDate);
+    await syncFacilityVisits(facilityType, facilityNames, visitDate);
 
     resetForm();
 
@@ -180,7 +182,7 @@ function handleSubmit(e) {
 }
 
 // 生き物記録の入力内容を施設訪問記録（zoo_facility_visits）にも登録する
-function syncFacilityVisits(facilityType, facilityNames, visitDate) {
+async function syncFacilityVisits(facilityType, facilityNames, visitDate) {
     try {
         const data = localStorage.getItem(FACILITY_VISITS_STORAGE_KEY);
         const facilityRecords = (data ? JSON.parse(data) : []).map(record => {
@@ -223,8 +225,11 @@ function syncFacilityVisits(facilityType, facilityNames, visitDate) {
             facilityRecords.forEach((record, index) => {
                 recordsObj[record.id || `record_${index}`] = record;
             });
-            firebase.database().ref('facility_visits').set(recordsObj)
-                .catch(e => console.error('Firebase(facility_visits) 保存エラー:', e));
+            try {
+                await firebase.database().ref('facility_visits').set(recordsObj);
+            } catch (e) {
+                console.error('Firebase(facility_visits) 保存エラー:', e);
+            }
         }
     } catch (e) {
         console.error('施設訪問記録の自動登録に失敗しました:', e);

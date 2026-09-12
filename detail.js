@@ -43,7 +43,7 @@ function loadDetailRecord() {
 }
 
 // 動物名・目・科の更新
-function handleAnimalInfoSubmit(e) {
+async function handleAnimalInfoSubmit(e) {
     e.preventDefault();
 
     const records = getRecords();
@@ -78,7 +78,9 @@ function handleAnimalInfoSubmit(e) {
         collision.updatedAt = new Date().toISOString();
 
         const filtered = records.filter(r => r.id !== currentRecordId);
-        saveRecords(filtered);
+        // クラウドへの保存が終わるのを待ってから画面遷移する
+        // （遷移が先に起きると、送信中のFirebaseへの書き込みが中断されてしまうことがある）
+        await saveRecords(filtered);
         window.location.href = `detail.html?id=${encodeURIComponent(collision.id)}`;
         return;
     }
