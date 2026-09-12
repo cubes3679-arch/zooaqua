@@ -466,7 +466,17 @@ function getRecords() {
         const records = (data ? JSON.parse(data) : []).map(normalizeRecord);
         const { merged, changed } = consolidateDuplicateAnimals(records);
         if (changed) {
-            saveRecords(merged);
+            // ここではローカルへの保存のみ行い、Firebaseへの反映は次に
+            // ユーザーが明示的に保存操作を行ったときに任せる。
+            // getRecordsは同期関数であちこちから頻繁に呼ばれるため、
+            // ここでawaitできない非同期のFirebase書き込みを発火すると、
+            // ページ遷移や他端末の同期（pull）と競合して、この場で
+            // 行った統合そのものが失われてしまうことがあるため。
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {
+                console.error('記録の保存に失敗しました:', e);
+            }
             return merged;
         }
         return records;

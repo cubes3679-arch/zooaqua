@@ -295,7 +295,12 @@ function getFacilityRecords() {
         const records = (data ? JSON.parse(data) : []).map(normalizeFacilityRecord);
         const { merged, changed } = consolidateDuplicateFacilities(records);
         if (changed) {
-            saveFacilityRecords(merged);
+            // ここではローカルへの保存のみ行う（理由はapp.jsのgetRecordsと同じ）
+            try {
+                localStorage.setItem(FACILITY_STORAGE_KEY, JSON.stringify(merged));
+            } catch (e) {
+                console.error('施設訪問記録の保存に失敗しました:', e);
+            }
             return merged;
         }
         return records;
