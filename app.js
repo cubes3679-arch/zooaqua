@@ -251,12 +251,19 @@ function applyMoriokaZooDateFix() {
     const records = getRecords();
     let recordsChanged = false;
     records.forEach(record => {
+        let recordTouched = false;
         record.visits.forEach(visit => {
             if (isMoriokaFacility(visit.facilityName) && visit.visitDate !== MORIOKA_FIX_DATE) {
                 visit.visitDate = MORIOKA_FIX_DATE;
-                recordsChanged = true;
+                recordTouched = true;
             }
         });
+        if (recordTouched) {
+            // updatedAtを更新しないと、他の端末との同期で「どちらが新しいデータか」の
+            // 判定に使われず、この修正が他の端末に伝わらないことがあるため必ず更新する
+            record.updatedAt = new Date().toISOString();
+            recordsChanged = true;
+        }
     });
     if (recordsChanged) saveRecords(records);
 
