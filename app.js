@@ -231,11 +231,18 @@ function syncFacilityVisits(facilityType, facilityNames, visitDate) {
     }
 }
 
-// 応急処置：旧データ移行で「盛岡動物園」に紐づいてしまった見学日を、
+// 応急処置：旧データ移行で「盛岡」の施設に紐づいてしまった見学日を、
 // 一括で2026-07-24に修正する（一度だけ実行し、以降は何もしない）
-const MORIOKA_FIX_KEY = 'zoo_morioka_zoo_date_fix_v1';
-const MORIOKA_FIX_TARGET_FACILITY = '盛岡動物園';
+// v1は施設名の完全一致でチェックしていたため、実際の施設名の表記が
+// 想定と違っていると何も修正されないまま「実行済み」扱いになってしまう
+// 問題があった。v2では「盛岡」を含む施設名すべてを対象にする
+const MORIOKA_FIX_KEY = 'zoo_morioka_zoo_date_fix_v2';
+const MORIOKA_FIX_MATCH = '盛岡';
 const MORIOKA_FIX_DATE = '2026-07-24';
+
+function isMoriokaFacility(name) {
+    return typeof name === 'string' && name.includes(MORIOKA_FIX_MATCH);
+}
 
 function applyMoriokaZooDateFix() {
     if (localStorage.getItem(MORIOKA_FIX_KEY)) return;
@@ -245,7 +252,7 @@ function applyMoriokaZooDateFix() {
     let recordsChanged = false;
     records.forEach(record => {
         record.visits.forEach(visit => {
-            if (visit.facilityName === MORIOKA_FIX_TARGET_FACILITY && visit.visitDate !== MORIOKA_FIX_DATE) {
+            if (isMoriokaFacility(visit.facilityName) && visit.visitDate !== MORIOKA_FIX_DATE) {
                 visit.visitDate = MORIOKA_FIX_DATE;
                 recordsChanged = true;
             }
@@ -259,7 +266,7 @@ function applyMoriokaZooDateFix() {
         const facilityRecords = data ? JSON.parse(data) : [];
         let facilityChanged = false;
         facilityRecords.forEach(fr => {
-            if (fr.facilityName === MORIOKA_FIX_TARGET_FACILITY) {
+            if (isMoriokaFacility(fr.facilityName)) {
                 const dates = Array.isArray(fr.visitDates) ? fr.visitDates : (fr.visitDate ? [fr.visitDate] : []);
                 if (dates.length !== 1 || dates[0] !== MORIOKA_FIX_DATE) {
                     fr.visitDates = [MORIOKA_FIX_DATE];
