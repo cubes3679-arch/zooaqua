@@ -121,7 +121,7 @@ function handleSubmit(e) {
     const notes = document.getElementById('notes').value.trim();
     
     if (!facilityNamesText) { alert('施設名を入力してください。'); return; }
-    if (!visitDate) { alert('最終見学日を選択してください。'); return; }
+    if (!visitDate) { alert('見学日を選択してください。'); return; }
     if (!animalNamesText) { alert('生き物の名前を入力してください。'); return; }
     
     // 施設名と生き物の名前を分割
@@ -133,42 +133,76 @@ function handleSubmit(e) {
 
     const records = getRecords();
 
-    // 編集モードの場合、対象レコードを一旦取り除く
     if (id) {
+        // 編集モード：動物名・目・科・種類・備考を更新し、見学日と施設名は蓄積する（過去の記録は消さない）
         const index = records.findIndex(r => r.id == id);
-        if (index !== -1) records.splice(index, 1);
-    }
-
-    // 生き物ごとに、同じ動物名の記録が既にあれば施設名だけ追加し、なければ新規作成する
-    animalNames.forEach((name, aIndex) => {
-        const existing = records.find(r => r.animalName === name);
-        if (existing) {
-            facilityNames.forEach(facility => {
-                if (!existing.facilityNames.includes(facility)) {
-                    existing.facilityNames.push(facility);
-                }
-            });
-            existing.visitDate = visitDate;
-            existing.facilityType = facilityType;
-            if (order) existing.order = order;
-            if (family) existing.family = family;
-            if (notes) existing.notes = notes;
-            existing.updatedAt = new Date().toISOString();
-        } else {
-            records.unshift({
-                id: (id && animalNames.length === 1) ? id : Date.now().toString() + '_' + aIndex + '_' + Math.random().toString(36).slice(2, 6),
-                animalName: name,
-                order,
-                family,
-                facilityType,
-                facilityNames: [...facilityNames],
-                visitDate,
-                notes,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
+        const target = index !== -1 ? records[index] : null;
+        if (target) {
+            const newName = animalNames[0];
+            const collision = records.find(r => r.id !== id && r.animalName === newName);
+            if (collision) {
+                // 変更後の動物名が別の記録と同じ場合は、施設名・見学日を統合する
+                records.splice(index, 1);
+                target.facilityNames.forEach(f => {
+                    if (!collision.facilityNames.includes(f)) collision.facilityNames.push(f);
+                });
+                facilityNames.forEach(f => {
+                    if (!collision.facilityNames.includes(f)) collision.facilityNames.push(f);
+                });
+                target.visitDates.forEach(d => {
+                    if (!collision.visitDates.includes(d)) collision.visitDates.push(d);
+                });
+                if (!collision.visitDates.includes(visitDate)) collision.visitDates.push(visitDate);
+                collision.facilityType = facilityType;
+                if (order) collision.order = order;
+                if (family) collision.family = family;
+                if (notes) collision.notes = notes;
+                collision.updatedAt = new Date().toISOString();
+            } else {
+                target.animalName = newName;
+                target.facilityNames = [...facilityNames];
+                if (!target.visitDates.includes(visitDate)) target.visitDates.push(visitDate);
+                target.facilityType = facilityType;
+                target.order = order;
+                target.family = family;
+                target.notes = notes;
+                target.updatedAt = new Date().toISOString();
+            }
         }
-    });
+    } else {
+        // 新規登録：同じ動物名の記録が既にあれば施設名・見学日を追加し、なければ新規作成する
+        animalNames.forEach((name, aIndex) => {
+            const existing = records.find(r => r.animalName === name);
+            if (existing) {
+                facilityNames.forEach(facility => {
+                    if (!existing.facilityNames.includes(facility)) {
+                        existing.facilityNames.push(facility);
+                    }
+                });
+                if (!existing.visitDates.includes(visitDate)) {
+                    existing.visitDates.push(visitDate);
+                }
+                existing.facilityType = facilityType;
+                if (order) existing.order = order;
+                if (family) existing.family = family;
+                if (notes) existing.notes = notes;
+                existing.updatedAt = new Date().toISOString();
+            } else {
+                records.unshift({
+                    id: Date.now().toString() + '_' + aIndex + '_' + Math.random().toString(36).slice(2, 6),
+                    animalName: name,
+                    order,
+                    family,
+                    facilityType,
+                    facilityNames: [...facilityNames],
+                    visitDates: [visitDate],
+                    notes,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        });
+    }
 
     saveRecords(records);
 
@@ -249,16 +283,55 @@ function editRecord(id) {
         family: record.family || '',
         facilityType: record.facilityType,
         facilityName: (record.facilityNames || []).join('\n'),
-        visitDate: record.visitDate,
+        visitDate: record.visitDates.length > 0 ? record.visitDates.reduce((max, d) => d > max ? d : max) : '',
         notes: record.notes || ''
     });
     window.location.href = `list.html?${params.toString()}`;
 }
 
+// 特定の1つの見学日だけを削除する
+function deleteRecordVisitDate(id, date) {
+    const records = getRecords();
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+
+    if (!confirm(`「${record.animalName}」の${date}の見学日を削除しますか？`)) return;
+
+    record.visitDates = record.visitDates.filter(d => d !== date);
+    record.updatedAt = new Date().toISOString();
+    saveRecords(records);
+    loadRecords();
+}
+
+// 特定の1つの見学日だけを修正する
+function editRecordVisitDate(id, oldDate) {
+    const records = getRecords();
+    const record = records.find(r => r.id === id);
+    if (!record) return;
+
+    const newDate = prompt('見学日を修正してください（YYYY-MM-DD形式）', oldDate);
+    if (!newDate || newDate === oldDate) return;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        alert('日付はYYYY-MM-DD形式で入力してください。');
+        return;
+    }
+    if (record.visitDates.includes(newDate)) {
+        alert('その見学日は既に登録されています。');
+        return;
+    }
+
+    const index = record.visitDates.indexOf(oldDate);
+    if (index !== -1) record.visitDates[index] = newDate;
+    record.updatedAt = new Date().toISOString();
+    saveRecords(records);
+    loadRecords();
+}
+
 // 削除ボタンクリック
 function deleteRecord(id) {
     if (!confirm('この記録を削除してもよろしいですか？')) return;
-    
+
     const records = getRecords();
     const filtered = records.filter(r => r.id !== id);
     saveRecords(filtered);
@@ -405,15 +478,23 @@ function renderList(records) {
     }
     
     tbody.innerHTML = records.map(record => {
-        const badgeClass = record.facilityType === '動物園' ? 'badge-zoo' : 
+        const badgeClass = record.facilityType === '動物園' ? 'badge-zoo' :
                           record.facilityType === '水族館' ? 'badge-aquarium' : 'badge-etc';
+        const sortedDates = [...(record.visitDates || [])].sort().reverse();
+        const dateBadges = sortedDates.map(d => `
+            <span class="facility-item">
+                ${d}
+                <button class="date-edit-btn" onclick="editRecordVisitDate('${record.id}', '${d}')" title="この日付を修正">✎</button>
+                <button class="date-delete-btn" onclick="deleteRecordVisitDate('${record.id}', '${d}')" title="この日付を削除">✕</button>
+            </span>
+        `).join('');
         return `<tr>
             <td><strong>${escapeHtml(record.animalName)}</strong></td>
             <td>${escapeHtml(record.order || '-')}</td>
             <td>${escapeHtml(record.family || '-')}</td>
             <td><span class="badge ${badgeClass}">${record.facilityType}</span></td>
             <td><div class="facility-list">${(record.facilityNames || []).map(f => `<span class="facility-item">${escapeHtml(f)}</span>`).join('') || '-'}</div></td>
-            <td>${record.visitDate || '-'}</td>
+            <td><div class="facility-list">${dateBadges || '-'}</div></td>
             <td class="notes-cell" title="${escapeHtml(record.notes || '')}">${escapeHtml(record.notes || '-')}</td>
             <td class="action-buttons">
                 <button class="btn-edit" onclick="editRecord('${record.id}')">編集</button>
@@ -506,11 +587,15 @@ function getRecords() {
     }
 }
 
-// 旧データ形式（facilityName単一文字列）をfacilityNames配列に変換
+// 旧データ形式（facilityName/visitDate単一文字列）を配列に変換
 function normalizeRecord(record) {
     if (!Array.isArray(record.facilityNames)) {
         record.facilityNames = record.facilityName ? [record.facilityName] : [];
         delete record.facilityName;
+    }
+    if (!Array.isArray(record.visitDates)) {
+        record.visitDates = record.visitDate ? [record.visitDate] : [];
+        delete record.visitDate;
     }
     return record;
 }
@@ -535,9 +620,9 @@ function consolidateDuplicateAnimals(records) {
         record.facilityNames.forEach(f => {
             if (!target.facilityNames.includes(f)) target.facilityNames.push(f);
         });
-        if (record.visitDate && (!target.visitDate || record.visitDate > target.visitDate)) {
-            target.visitDate = record.visitDate;
-        }
+        record.visitDates.forEach(d => {
+            if (!target.visitDates.includes(d)) target.visitDates.push(d);
+        });
         if (!target.order && record.order) target.order = record.order;
         if (!target.family && record.family) target.family = record.family;
         if (record.notes && record.notes !== target.notes) {
