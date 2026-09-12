@@ -10,9 +10,6 @@ let filteredRecords = [];
 
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', function() {
-    // 既存の生き物記録から施設訪問記録を補完登録（一度登録済みのものはスキップされる）
-    backfillFacilityVisitsFromRecords();
-
     // ページによって処理を分岐
     const isListPage = document.getElementById('animalList') !== null;
     const isFormPage = document.getElementById('animalForm') !== null;
@@ -236,16 +233,6 @@ function syncFacilityVisits(facilityType, facilityNames, visitDate) {
     } catch (e) {
         console.error('施設訪問記録の自動登録に失敗しました:', e);
     }
-}
-
-// 既存の生き物記録（過去に登録済みのもの）を施設訪問記録に補完登録する
-function backfillFacilityVisitsFromRecords() {
-    const records = getRecords();
-    records.forEach(record => {
-        if (record.facilityNames && record.facilityNames.length > 0 && record.visitDate) {
-            syncFacilityVisits(record.facilityType, record.facilityNames, record.visitDate);
-        }
-    });
 }
 
 // 編集ボタンクリック

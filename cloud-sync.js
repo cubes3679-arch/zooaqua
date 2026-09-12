@@ -117,11 +117,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             const records = await syncWithFirebase();
             console.log('Cloud sync completed');
 
-            // クラウドから取得した最新データを使って施設訪問記録を補完登録
-            if (typeof backfillFacilityVisitsFromRecords === 'function') {
-                backfillFacilityVisitsFromRecords();
-            }
-
             // 一覧ページの場合、データを読み込み直す
             if (typeof loadRecords === 'function') {
                 loadRecords();
