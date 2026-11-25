@@ -703,6 +703,25 @@ function renderTaxonomyIssues() {
   $('taxonomy-issues-title').textContent = `取得できなかった分類 · ${taxonomyIssues.size}種類`;
 }
 
+function renderTaxonomyDifferences(differences) {
+  const section = $('taxonomy-differences');
+  $('taxonomy-differences-title').textContent = `入力済みの分類との違い · ${differences.length}種類`;
+  $('taxonomy-differences-list').replaceChildren(...differences.map(({ animal, result, fields }) => {
+    const row = el('li', null, 'panel');
+    row.append(el('strong', animal.name), el('p', taxonomySourceLabel(result)));
+    const list = el('ul');
+    for (const field of fields) {
+      list.append(el('li', `${ranks[field]}：登録「${animal.taxonomy[field]}」 → 候補「${result.taxonomy[field]}」`));
+    }
+    row.append(list, button('詳細を開く', () => {
+      $('taxonomy').close();
+      showAnimal(animal.id);
+    }));
+    return row;
+  }));
+  section.hidden = !differences.length;
+}
+
 $('taxonomy-open').onclick = () => $('taxonomy').showModal();
 $('taxonomy-stop').onclick = () => {
   stopTaxonomy = true;
@@ -714,27 +733,32 @@ $('taxonomy-scan').onclick = async () => {
   stopTaxonomy = false;
   const status = $('taxonomy-status');
   const scan = $('taxonomy-scan');
+  const compareToggle = $('taxonomy-compare');
+  const compareAll = compareToggle.checked;
+  const differences = [];
+  renderTaxonomyDifferences(differences);
   const stop = $('taxonomy-stop');
   const bar = $('taxonomy-progress');
   const submit = $('taxonomy-form').querySelector('[type=submit]');
-  scan.disabled = submit.disabled = true;
+  scan.disabled = submit.disabled = compareToggle.disabled = true;
   let completed = 0;
   let errors = 0;
   let unmatched = 0;
   try {
     const current = project(await readEntries(db));
     const fields = Object.fromEntries(Object.keys(ranks).map(field => [field, true]));
-    const animals = [...current.animals.values()].filter(animal => animal.name && Object.keys(ranks).some(field => !animal.taxonomy[field]));
+    const animals = [...current.animals.values()].filter(animal => animal.name && (compareAll || Object.keys(ranks).some(field => !animal.taxonomy[field])));
     const eligible = new Set(animals.map(animal => animal.id));
     for (const id of taxonomyIssues.keys()) {
       if (!eligible.has(id)) taxonomyIssues.delete(id);
     }
     const queue = animals.filter(animal => {
+      if (compareAll) return true;
       if (!Object.keys(missingTaxonomy(animal, fields)).length) {
         taxonomyIssues.set(animal.id, { name: animal.name, reason: '旧記録の分類に複数の値があります。詳細で確認してください。' });
         return false;
       }
-      return !taxonomyCandidates.has(animal.id);
+      return true;
     });
     renderTaxonomyIssues();
     if (!queue.length) {
@@ -751,10 +775,20 @@ $('taxonomy-scan').onclick = async () => {
       try {
         const result = await lookup(animal.name);
         const taxonomy = result ? missingTaxonomy(animal, result.taxonomy) : {};
+        if (result) {
+          const differentFields = Object.keys(ranks).filter(field =>
+            animal.taxonomy[field] && result.taxonomy[field] &&
+            normalizeName(animal.taxonomy[field]) !== normalizeName(result.taxonomy[field]));
+          if (differentFields.length) differences.push({ animal, result, fields: differentFields });
+        }
         if (Object.keys(taxonomy).length) {
-          taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: !result.variantMatch });
-        } else unmatched++;
+          taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: taxonomyCandidates.get(animal.id)?.selected ?? !result.variantMatch });
+        } else {
+          taxonomyCandidates.delete(animal.id);
+          if (!result || !Object.keys(result.taxonomy).length) unmatched++;
+        }
         const missing = Object.keys(ranks).filter(field => !animal.taxonomy[field] && !taxonomy[field]);
+        if (compareAll && !result && !missing.length) reason = '和名から照合先を特定できませんでした。';
         if (missing.length) {
           const labels = missing.map(field => ranks[field]).join('・');
           reason = result?.sources.length > 1 ? `複数候補で共通する値を確認できなかった項目：${labels}` : result ? `補えなかった項目：${labels}` : `和名から分類を特定できませんでした（${labels}）。`;
@@ -769,15 +803,16 @@ $('taxonomy-scan').onclick = async () => {
     }
     renderTaxonomyCandidates();
     renderTaxonomyIssues();
+    renderTaxonomyDifferences(differences);
     if (taxonomyIssues.size && !taxonomyCandidates.size) $('taxonomy-issues').open = true;
     const lead = stopTaxonomy ? '検索を停止しました。' : '検索が完了しました。';
-    status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、補える候補なし ${unmatched}件、取得失敗 ${errors}件。`;
+    status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、分類の違い ${differences.length}種類、照合候補なし ${unmatched}件、取得失敗 ${errors}件。`;
   } catch {
     status.textContent = '端末の記録を読み込めませんでした。';
   } finally {
     taxonomyBusy = false;
     stop.hidden = true;
-    scan.disabled = submit.disabled = false;
+    scan.disabled = submit.disabled = compareToggle.disabled = false;
   }
 };
 $('taxonomy-form').onsubmit = async event => {

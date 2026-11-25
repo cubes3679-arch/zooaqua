@@ -77,5 +77,5 @@ dialog::backdrop { background: #0c1b32bd; }
 #taxonomy-results dd { margin: 0; overflow-wrap: anywhere; }
 #taxonomy-results .taxon-reference { color: var(--blue); }
 
-#taxonomy-issues { margin-top: 16px; }
-#taxonomy-issues-list { margin: 8px 0 0; padding: 0; list-style: none; }
+#taxonomy-issues, #taxonomy-differences { margin-top: 16px; }
+#taxonomy-issues-list, #taxonomy-differences-list { margin: 8px 0 0; padding: 0; list-style: none; }
