@@ -18,6 +18,7 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
   const target = new URL(event.request.url);
   target.search = '';
+  target.hash = '';
   if (!FILES.some(file => new URL(file, self.registration.scope).href === target.href)) return;
   event.respondWith(fetch(event.request).then(response => {
     if (!response.ok) throw new Error('App shell unavailable');
