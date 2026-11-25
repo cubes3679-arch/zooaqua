@@ -704,14 +704,76 @@ function renderTaxonomyIssues() {
   $('taxonomy-issues-title').textContent = `取得できなかった分類 · ${taxonomyIssues.size}種類`;
 }
 
+let differenceRows = [];
+let selectingAllDifferences = false;
+
+function updateDifferenceSelection() {
+  if (selectingAllDifferences) return;
+  const boxes = nodes('#taxonomy-differences-list input[type=checkbox]');
+  const count = boxes.filter(box => box.checked).length;
+  const all = $('taxonomy-differences-all');
+  all.checked = count > 0 && count === boxes.length;
+  all.indeterminate = count > 0 && count < boxes.length;
+  all.disabled = taxonomyBusy || !boxes.length;
+  $('taxonomy-save-differences').disabled = taxonomyBusy || !count;
+}
+
+$('taxonomy-differences-all').onchange = event => {
+  const checked = event.target.checked;
+  selectingAllDifferences = true;
+  for (const box of nodes('#taxonomy-differences-list input[type=checkbox]')) {
+    box.checked = checked;
+    box.dispatchEvent(new Event('change'));
+  }
+  selectingAllDifferences = false;
+  updateDifferenceSelection();
+};
+$('taxonomy-save-differences').onclick = async () => {
+  if (taxonomyBusy || !db) return;
+  const selected = differenceRows.filter(row => row.selected.size);
+  if (!selected.length) return;
+  taxonomyBusy = true;
+  updateDifferenceSelection();
+  const list = $('taxonomy-differences-list');
+  list.inert = true;
+  $('taxonomy-scan').disabled = true;
+  const status = $('taxonomy-differences-status');
+  try {
+    const changes = selected.map(({ animal, result, selected }) => [
+      animal.id,
+      Object.fromEntries([...selected].map(field => [field, result.taxonomy[field]])),
+      Object.fromEntries([...selected].map(field => [field, animal.taxonomy[field]])),
+    ]);
+    const saved = await saveTaxonomyCandidates(db, changes);
+    updates?.postMessage('changed');
+    if (await refresh().then(() => true, () => false)) {
+      const remaining = differenceRows.map(row => {
+        const animal = view.animals.get(row.animal.id);
+        return { ...row, animal, fields: row.fields.filter(field =>
+          animal?.taxonomy[field] === row.animal.taxonomy[field] && animal.taxonomy[field] !== row.result.taxonomy[field]) };
+      }).filter(row => row.fields.length);
+      renderTaxonomyDifferences(remaining);
+    }
+    $('taxonomy-differences').hidden = false;
+    status.textContent = `${saved}種類の分類を更新しました。実行前に値が変わった項目はスキップされます。`;
+  } catch {
+    status.textContent = '分類を保存できませんでした。もう一度お試しください。';
+  } finally {
+    taxonomyBusy = false;
+    list.inert = false;
+    $('taxonomy-scan').disabled = false;
+    updateDifferenceSelection();
+  }
+};
+
 function renderTaxonomyDifferences(differences) {
+  differenceRows = differences.map(row => ({ ...row, selected: new Set() }));
   const section = $('taxonomy-differences');
   $('taxonomy-differences-title').textContent = `入力済みの分類との違い · ${differences.length}種類`;
-  $('taxonomy-differences-list').replaceChildren(...differences.map(({ animal, result, fields }) => {
+  $('taxonomy-differences-list').replaceChildren(...differenceRows.map(({ animal, result, fields, selected: fieldsToApply }) => {
     const row = el('li', null, 'panel');
     row.append(el('strong', animal.name), el('p', taxonomySourceLabel(result)));
     const list = el('div', null, 'stack');
-    const fieldsToApply = new Set();
     const apply = button('選択した候補で編集', () => {
       const suggestions = Object.fromEntries([...fieldsToApply].map(field => [field, result.taxonomy[field]]));
       $('taxonomy').close();
@@ -727,6 +789,7 @@ function renderTaxonomyDifferences(differences) {
         if (check.checked) fieldsToApply.add(field);
         else fieldsToApply.delete(field);
         apply.disabled = !fieldsToApply.size;
+        updateDifferenceSelection();
       };
       list.append(label);
     }
@@ -737,6 +800,7 @@ function renderTaxonomyDifferences(differences) {
     return row;
   }));
   section.hidden = !differences.length;
+  updateDifferenceSelection();
 }
 
 $('taxonomy-open').onclick = () => $('taxonomy').showModal();
@@ -753,6 +817,7 @@ $('taxonomy-scan').onclick = async () => {
   const compareToggle = $('taxonomy-compare');
   const compareAll = compareToggle.checked;
   const differences = [];
+  $('taxonomy-differences-status').textContent = '';
   renderTaxonomyDifferences(differences);
   const stop = $('taxonomy-stop');
   const bar = $('taxonomy-progress');
@@ -830,6 +895,7 @@ $('taxonomy-scan').onclick = async () => {
     taxonomyBusy = false;
     stop.hidden = true;
     scan.disabled = submit.disabled = compareToggle.disabled = false;
+    updateDifferenceSelection();
   }
 };
 $('taxonomy-form').onsubmit = async event => {
