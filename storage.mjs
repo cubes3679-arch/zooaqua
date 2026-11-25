@@ -1,4 +1,4 @@
-import { legacyRows, sources, key, normalizeName } from './model.mjs';
+import { legacyRows, sources, key, normalizeName, missingTaxonomy, project } from './model.mjs';
 
 export function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -23,6 +23,33 @@ export function putEntries(db, entries) {
     const store = transaction.objectStore('entries');
     for (const entry of entries) store.put(entry);
     transaction.oncomplete = resolve;
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
+export function saveTaxonomyCandidates(db, candidates) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('entries', 'readwrite');
+    const store = transaction.objectStore('entries');
+    const request = store.getAll();
+    let saved = 0;
+    request.onsuccess = () => {
+      try {
+        const { animals } = project(request.result);
+        for (const [id, offered] of candidates) {
+          const animal = animals.get(id);
+          if (!animal) continue;
+          const taxonomy = missingTaxonomy(animal, offered);
+          if (!Object.keys(taxonomy).length) continue;
+          store.put(operation('species', { animalName: animal.name, taxonomy }));
+          saved++;
+        }
+      } catch (error) {
+        transaction.abort();
+        reject(error);
+      }
+    };
+    transaction.oncomplete = () => resolve(saved);
     transaction.onabort = () => reject(transaction.error);
   });
 }

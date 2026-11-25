@@ -136,3 +136,10 @@ export function project(entries) {
 
 export const ordered = observations =>
   [...observations.values()].sort((a, b) => (a.visit.date || '9999').localeCompare(b.visit.date || '9999'));
+
+export function missingTaxonomy(animal, offered) {
+  return Object.fromEntries(Object.keys(ranks)
+    .filter(field => !animal.taxonomy[field] && (animal.variants[field]?.length ?? 0) <= 1)
+    .map(field => [field, offered[field]])
+    .filter(([, value]) => value));
+}
