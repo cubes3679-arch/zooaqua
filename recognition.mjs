@@ -25,9 +25,10 @@ async function taxa(path) {
   return (await response.json()).results;
 }
 
-export function lookup(name) {
+export function lookup(name, { refresh = false } = {}) {
   const query = normalizeName(name);
   if (!query) return Promise.resolve(null);
+  if (refresh) searches.delete(query);
   if (!searches.has(query)) {
     if (searches.size >= 512) searches.delete(searches.keys().next().value);
     searches.set(query, lookupTaxon(query).catch(error => {

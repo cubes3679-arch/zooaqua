@@ -1,5 +1,5 @@
 import { key, normalizeName, normalizeSearchName, ordered, project, ranks, missingTaxonomy } from './model.mjs';
-import { migrateLocal, openDatabase, operation, putEntries, readEntries, readLegacyCloud, saveTaxonomyCandidates } from './storage.mjs';
+import { migrateLocal, openDatabase, operation, putEntries, readEntries, readLegacyCloud, saveTaxonomyCandidates, readTaxonomyLookup, writeTaxonomyLookup } from './storage.mjs';
 import { lookup, ocrWorker, readSign, speciesPhoto } from './recognition.mjs';
 
 const $ = id => document.getElementById(id);
@@ -808,12 +808,13 @@ $('taxonomy-stop').onclick = () => {
   stopTaxonomy = true;
   $('taxonomy-stop').disabled = true;
 };
-$('taxonomy-scan').onclick = async () => {
+async function scanTaxonomy(refreshResults) {
   if (taxonomyBusy || !db) return;
   taxonomyBusy = true;
   stopTaxonomy = false;
   const status = $('taxonomy-status');
   const scan = $('taxonomy-scan');
+  const refreshButton = $('taxonomy-refresh');
   const compareToggle = $('taxonomy-compare');
   const compareAll = compareToggle.checked;
   const differences = [];
@@ -822,10 +823,12 @@ $('taxonomy-scan').onclick = async () => {
   const stop = $('taxonomy-stop');
   const bar = $('taxonomy-progress');
   const submit = $('taxonomy-form').querySelector('[type=submit]');
-  scan.disabled = submit.disabled = compareToggle.disabled = true;
+  scan.disabled = refreshButton.disabled = submit.disabled = compareToggle.disabled = true;
   let completed = 0;
   let errors = 0;
   let unmatched = 0;
+  let reused = 0;
+  let cacheWriteFailed = false;
   try {
     const current = project(await readEntries(db));
     const fields = Object.fromEntries(Object.keys(ranks).map(field => [field, true]));
@@ -834,7 +837,7 @@ $('taxonomy-scan').onclick = async () => {
     for (const id of taxonomyIssues.keys()) {
       if (!eligible.has(id)) taxonomyIssues.delete(id);
     }
-    const queue = animals.filter(animal => {
+    const targets = animals.filter(animal => {
       if (compareAll) return true;
       if (!Object.keys(missingTaxonomy(animal, fields)).length) {
         taxonomyIssues.set(animal.id, { name: animal.name, reason: '旧記録の分類に複数の値があります。詳細で確認してください。' });
@@ -842,6 +845,9 @@ $('taxonomy-scan').onclick = async () => {
       }
       return true;
     });
+    const queue = targets.map(animal => ({
+      animal, cached: refreshResults ? undefined : readTaxonomyLookup(animal.name),
+    })).sort((a, b) => Number(a.cached === undefined) - Number(b.cached === undefined));
     renderTaxonomyIssues();
     if (!queue.length) {
       status.textContent = taxonomyCandidates.size ? '取得済みの候補を確認してください。' : taxonomyIssues.size ? '詳細で分類を確認してください。' : '一括取得できる分類の空欄はありません。';
@@ -850,12 +856,14 @@ $('taxonomy-scan').onclick = async () => {
     stop.disabled = stop.hidden = bar.hidden = false;
     bar.max = queue.length;
     bar.value = 0;
-    for (const animal of queue) {
+    for (const { animal, cached } of queue) {
       if (stopTaxonomy) break;
       status.textContent = `${completed} / ${queue.length}件を確認 · ${animal.name}`;
       let reason = '';
       try {
-        const result = await lookup(animal.name);
+        const result = cached === undefined ? await lookup(animal.name, { refresh: refreshResults }) : cached;
+        if (cached !== undefined) reused++;
+        else if (!writeTaxonomyLookup(animal.name, result)) cacheWriteFailed = true;
         const taxonomy = result ? missingTaxonomy(animal, result.taxonomy) : {};
         if (result) {
           const differentFields = Object.keys(ranks).filter(field =>
@@ -888,16 +896,19 @@ $('taxonomy-scan').onclick = async () => {
     renderTaxonomyDifferences(differences);
     if (taxonomyIssues.size && !taxonomyCandidates.size) $('taxonomy-issues').open = true;
     const lead = stopTaxonomy ? '検索を停止しました。' : '検索が完了しました。';
-    status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、分類の違い ${differences.length}種類、照合候補なし ${unmatched}件、取得失敗 ${errors}件。`;
+    status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、分類の違い ${differences.length}種類、照合候補なし ${unmatched}件、取得失敗 ${errors}件。保存済みの照会結果を${reused}件再利用しました。
+      ${cacheWriteFailed ? '一部の照会結果を次回用に保存できませんでした。' : ''}`;
   } catch {
     status.textContent = '端末の記録を読み込めませんでした。';
   } finally {
     taxonomyBusy = false;
     stop.hidden = true;
-    scan.disabled = submit.disabled = compareToggle.disabled = false;
+    scan.disabled = refreshButton.disabled = submit.disabled = compareToggle.disabled = false;
     updateDifferenceSelection();
   }
-};
+}
+$('taxonomy-scan').onclick = () => scanTaxonomy(false);
+$('taxonomy-refresh').onclick = () => scanTaxonomy(true);
 $('taxonomy-form').onsubmit = async event => {
   event.preventDefault();
   if (taxonomyBusy || !db) return;

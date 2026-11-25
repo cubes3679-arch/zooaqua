@@ -93,3 +93,22 @@ export async function readLegacyCloud() {
   })));
   return legacyRows({ cloud });
 }
+
+
+export function readTaxonomyLookup(name) {
+  try {
+    const stored = localStorage.getItem('zooaqua-taxonomy-lookup-v1:' + normalizeName(name));
+    return stored === null ? undefined : JSON.parse(stored);
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeTaxonomyLookup(name, result) {
+  try {
+    localStorage.setItem('zooaqua-taxonomy-lookup-v1:' + normalizeName(name), JSON.stringify(result));
+    return true;
+  } catch {
+    return false;
+  }
+}

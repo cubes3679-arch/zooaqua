@@ -88,9 +88,10 @@
   <dialog id="taxonomy" aria-labelledby="taxonomy-title">
     <div class="dialog-head"><button type="button" class="secondary" data-close>閉じる</button></div>
     <h2 id="taxonomy-title">登録済みの分類を一括取得</h2>
-    <p>iNaturalistで和名を照合し、大分類・目・科・属の空欄を補います。取得した候補を確認してから保存できます。</p>
+    <p>iNaturalistで和名を照合し、大分類・目・科・属の空欄を補います。前回の照会結果を再利用し、未照会のものだけ検索します。</p>
     <div class="inline">
-      <button id="taxonomy-scan" type="button">分類を検索</button>
+      <button id="taxonomy-scan" type="button">未照会の分類を検索</button>
+      <button id="taxonomy-refresh" type="button" class="secondary">対象を再照会</button>
       <button id="taxonomy-stop" type="button" class="secondary" hidden>検索を停止</button>
     </div>
     <label class="inline"><input id="taxonomy-compare" type="checkbox">入力済みの分類もすべて照合する</label>
