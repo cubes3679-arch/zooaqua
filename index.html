@@ -93,11 +93,17 @@
       <button id="taxonomy-scan" type="button">分類を検索</button>
       <button id="taxonomy-stop" type="button" class="secondary" hidden>検索を停止</button>
     </div>
+    <label class="inline"><input id="taxonomy-compare" type="checkbox">入力済みの分類もすべて照合する</label>
     <progress id="taxonomy-progress" aria-label="分類検索の進捗" hidden></progress>
     <p id="taxonomy-status" role="status"></p>
     <details id="taxonomy-issues" hidden>
       <summary id="taxonomy-issues-title"></summary>
       <ul id="taxonomy-issues-list" class="stack"></ul>
+    </details>
+    <details id="taxonomy-differences" hidden>
+      <summary id="taxonomy-differences-title"></summary>
+      <p>登録値と検索結果を表示します。分類名の別表記も含まれます。</p>
+      <ul id="taxonomy-differences-list" class="stack"></ul>
     </details>
     <form id="taxonomy-form" hidden>
       <div class="inline"><button type="submit">選択した分類を保存</button></div>
