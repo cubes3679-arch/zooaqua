@@ -64,7 +64,7 @@ async function lookupTaxon(query) {
     const canonical = normalizeSearchName(query);
     const parts = canonical.match(/^([^()]+)\(([^()]+)\)$/)?.slice(1) ?? [canonical];
     const words = [...new Set(parts.flatMap(part => [part, part.replace(/^ニホン/, '')]).map(part => part.trim()))]
-      .filter(part => part.length >= 3);
+      .filter(part => part.length >= 2);
     const extra = await Promise.all(words.filter(word => word !== query).map(suggest));
     const available = candidates.concat(...extra).filter(taxon => taxon.is_active);
     const names = taxon => [taxon.preferred_common_name, taxon.matched_term]
