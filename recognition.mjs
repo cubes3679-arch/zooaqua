@@ -6,6 +6,11 @@ const groups = {
   Arachnida: 'クモ類', Cephalopoda: '頭足類', Gastropoda: '腹足類', Bivalvia: '二枚貝類',
 };
 
+// Japanese names documented alongside their scientific names by the Ministry of the Environment.
+const scientificAliases = new Map([
+  ['アカコンゴウインコ', 'Ara macao'], // https://www.env.go.jp/content/900494416.pdf
+]);
+
 const searches = new Map();
 let rateLimit = Promise.resolve();
 
@@ -59,6 +64,13 @@ async function lookupTaxon(query) {
     variants.delete(query);
     const alternatives = await Promise.all([...variants].map(suggest));
     ids = matchingIds(candidates.concat(...alternatives), canonical, normalizeSearchName);
+  }
+  const scientificAlias = scientificAliases.get(normalizeSearchName(query));
+  if (!ids.length && scientificAlias) {
+    const matches = (await suggest(scientificAlias))
+      .filter(taxon => taxon.is_active && taxon.name === scientificAlias);
+    ids = matches.map(taxon => taxon.id);
+    nearNames = [...new Set(matches.map(taxon => taxon.preferred_common_name || taxon.name))];
   }
   if (!ids.length && /[ぁ-ゖァ-ヺ一-龯]/.test(query)) {
     const canonical = normalizeSearchName(query);
