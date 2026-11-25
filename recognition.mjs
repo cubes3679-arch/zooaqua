@@ -1,4 +1,4 @@
-import { normalizeName } from './model.mjs';
+import { normalizeName, normalizeSearchName } from './model.mjs';
 
 const groups = {
   Mammalia: '哺乳類', Aves: '鳥類', Reptilia: '爬虫類', Amphibia: '両生類',
@@ -34,10 +34,21 @@ export function lookup(name) {
 }
 
 async function lookupTaxon(query) {
-  const candidates = await taxa('/autocomplete?' + new URLSearchParams({ q: query, locale: 'ja', per_page: 20 }));
-  const ids = [...new Set(candidates.filter(taxon => taxon.is_active && (
-    normalizeName(taxon.preferred_common_name) === query || normalizeName(taxon.matched_term) === query || taxon.name === query
-  )).map(taxon => taxon.id))];
+  const suggest = term => taxa('/autocomplete?' + new URLSearchParams({ q: term, locale: 'ja', per_page: 20 }));
+  const matchingIds = (candidates, name, normalize) => candidates.filter(taxon => taxon.is_active && (
+    [taxon.preferred_common_name, taxon.matched_term, taxon.name].some(term => normalize(term) === name)
+  )).map(taxon => taxon.id);
+  const candidates = await suggest(query);
+  let ids = matchingIds(candidates, query, normalizeName);
+  const variantMatch = !ids.length;
+  if (variantMatch && /[ぁ-ゖァ-ヺ一-龯]/.test(query)) {
+    const canonical = normalizeSearchName(query);
+    const variants = new Set([canonical, canonical.replaceAll('ニホン', '日本')]);
+    variants.delete(query);
+    const alternatives = await Promise.all([...variants].map(suggest));
+    ids = matchingIds(candidates.concat(...alternatives), canonical, normalizeSearchName);
+  }
+  ids = [...new Set(ids)];
   if (!ids.length) return null;
   const details = await Promise.all(ids.map(async id => {
     const results = await taxa('/' + id + '?locale=ja');
@@ -56,6 +67,7 @@ async function lookupTaxon(query) {
   const common = first.preferred_common_name ?? '';
   return {
     taxonomy,
+    variantMatch,
     sources: details.map(taxon => ({ id: taxon.id, scientificName: taxon.name })),
     japaneseName: /[ぁ-ゖァ-ヺ一-龯]/.test(common) && details.every(taxon => taxon.preferred_common_name === common) ? common : '',
   };

@@ -1,4 +1,4 @@
-import { key, normalizeName, ordered, project, ranks, missingTaxonomy } from './model.mjs';
+import { key, normalizeName, normalizeSearchName, ordered, project, ranks, missingTaxonomy } from './model.mjs';
 import { migrateLocal, openDatabase, operation, putEntries, readEntries, readLegacyCloud, saveTaxonomyCandidates } from './storage.mjs';
 import { lookup, ocrWorker, readSign, speciesPhoto } from './recognition.mjs';
 
@@ -82,11 +82,11 @@ function updateTaxonomyFilters() {
   }
 }
 function renderGuide() {
-  const search = normalizeName($('search').value).toLowerCase();
+  const search = normalizeSearchName($('search').value);
   const facility = $('filter-facility').value;
   const filtered = [...view.animals.values()].filter(animal =>
     (animal.observations.size > 0 || view.unresolved.some(record => normalizeName(record.animalName) === animal.id)) &&
-    normalizeName(animal.name).toLowerCase().includes(search) &&
+    normalizeSearchName(animal.name).includes(search) &&
     Object.keys(ranks).every(field => !$('filter-' + field).value || animal.taxonomy[field] === $('filter-' + field).value) &&
     (!facility || [...animal.observations.values()].some(observation => observation.visit.facility.id === facility))
   ).sort((a, b) => compare(a.name, b.name));
@@ -211,7 +211,8 @@ function taxonomyFields(taxonomy = {}, variants = {}) {
 }
 function taxonomySourceLabel(result) {
   const names = result.sources.map(source => source.scientificName).join(' / ');
-  return result.sources.length > 1 ? `複数の候補で共通する分類：${names}` : `iNaturalistの分類候補 ${names}`;
+  const label = result.sources.length > 1 ? '複数の候補で共通する分類' : 'iNaturalistの分類候補';
+  return `${result.variantMatch ? '表記ゆれで一致 · ' : ''}${label}：${names}`;
 }
 
 async function fillTaxonomy(name, controls, status) {
@@ -667,6 +668,7 @@ function renderTaxonomyCandidates() {
     label.prepend(select);
     select.onchange = () => { candidate.selected = select.checked; };
     const sources = el('div', null, 'inline');
+    if (candidate.variantMatch) sources.append(el('span', '表記ゆれで一致'));
     if (candidate.sources.length > 1) sources.append(el('span', '候補に共通する分類'));
     for (const taxon of candidate.sources) {
       const source = el('a', taxon.scientificName, 'taxon-reference');
@@ -748,7 +750,7 @@ $('taxonomy-scan').onclick = async () => {
         const result = await lookup(animal.name);
         const taxonomy = result ? missingTaxonomy(animal, result.taxonomy) : {};
         if (Object.keys(taxonomy).length) {
-          taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: true });
+          taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: !result.variantMatch });
         } else unmatched++;
         const missing = Object.keys(ranks).filter(field => !animal.taxonomy[field] && !taxonomy[field]);
         if (missing.length) {
