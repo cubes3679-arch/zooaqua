@@ -1,61 +1,27 @@
-// Service Worker for Zoo Animal Records App
-
-const CACHE_NAME = 'zoo-records-v3';
-const ASSETS_TO_CACHE = [
-    './',
-    'index.html',
-    'list.html',
-    'app.js',
-    'manifest.json'
+const CACHE = 'zooaqua-guide-v2';
+const FILES = [
+  './', './index.html', './guide.css', './guide.mjs', './model.mjs', './storage.mjs',
+  './recognition.mjs', './manifest.json', './icon-192.svg',
+  './list.html', './detail.html', './facilities.html', './miss.html', './wild.html',
 ];
 
-// インストール時にキャッシュ
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                return cache.addAll(ASSETS_TO_CACHE);
-            })
-            .then(() => {
-                return self.skipWaiting();
-            })
-    );
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
 });
-
-// アクティブ時に古いキャッシュを削除
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys()
-            .then((cacheNames) => {
-                return Promise.all(
-                    cacheNames
-                        .filter((name) => name !== CACHE_NAME)
-                        .map((name) => caches.delete(name))
-                );
-            })
-            .then(() => {
-                return self.clients.claim();
-            })
-    );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(key => key === 'zoo-records-v3' || (key.startsWith('zooaqua-guide-') && key !== CACHE))
+      .map(key => caches.delete(key))
+  )).then(() => self.clients.claim()));
 });
-
-// ネットワーク優先、失敗時にキャッシュ
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // 正常なレスポンスの場合、キャッシュに保存
-                if (response.ok) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            })
-            .catch(() => {
-                // オフライン時はキャッシュから返す
-                return caches.match(event.request);
-            })
-    );
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
+  const target = new URL(event.request.url);
+  target.search = '';
+  target.hash = '';
+  if (!FILES.some(file => new URL(file, self.registration.scope).href === target.href)) return;
+  event.respondWith(fetch(event.request).then(response => {
+    if (!response.ok) throw new Error('App shell unavailable');
+    return response;
+  }).catch(async () => (await caches.open(CACHE)).match(target.href)));
 });
