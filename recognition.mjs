@@ -227,7 +227,11 @@ export async function readSign(worker, file, retry, progress) {
         match.sources.every(source => result.sources.some(other => other.id === source.id)));
       if (!duplicate) matches.push({ name, ...result });
     }
-    const scientificNames = [...text.matchAll(/\b([A-Z][a-z]{2,})[ \t]+([a-z]{3,})(?:[ \t]+([a-z]{3,}))?\b/g)]
+    const lowercaseLabels = text.split(/\r?\n/).map(line => line.trim())
+      .filter(line => /^[a-z]{3,} [a-z]{3,}(?: [a-z]{3,})?$/.test(line))
+      .map(line => line[0].toUpperCase() + line.slice(1));
+    const academicText = [text, ...lowercaseLabels].join('\n');
+    const scientificNames = [...academicText.matchAll(/\b([A-Z][a-z]{2,})[ \t]+([a-z]{3,})(?:[ \t]+([a-z]{3,}))?\b/g)]
       .slice(0, 3).map(match => match.slice(1).filter(Boolean));
     for (const words of scientificNames) {
       for (const scientific of [...new Set([words.join(' '), words.slice(0, 2).join(' ')])]) {
