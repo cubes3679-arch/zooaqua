@@ -1,4 +1,4 @@
-const CACHE = 'zooaqua-guide-v9';
+const CACHE = 'zooaqua-guide-v10';
 const FILES = [
   './', './index.html', './guide.css', './guide.mjs', './model.mjs', './storage.mjs',
   './recognition.mjs', './manifest.json', './icon-192.svg',
