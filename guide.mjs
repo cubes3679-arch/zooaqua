@@ -1,5 +1,5 @@
-import { key, normalizeName, ordered, project, ranks } from './model.mjs';
-import { migrateLocal, openDatabase, operation, putEntries, readEntries, readLegacyCloud } from './storage.mjs';
+import { key, normalizeName, ordered, project, ranks, missingTaxonomy } from './model.mjs';
+import { migrateLocal, openDatabase, operation, putEntries, readEntries, readLegacyCloud, saveTaxonomyCandidates } from './storage.mjs';
 import { lookup, ocrWorker, readSign, speciesPhoto } from './recognition.mjs';
 
 const $ = id => document.getElementById(id);
@@ -638,6 +638,117 @@ $('review-form').addEventListener('submit', event => {
     window.scrollTo(0, 0);
   });
 });
+
+const taxonomyCandidates = new Map();
+let stopTaxonomy = false;
+let taxonomyBusy = false;
+
+function renderTaxonomyCandidates() {
+  const list = $('taxonomy-results');
+  list.replaceChildren(...[...taxonomyCandidates.values()].map(candidate => {
+    const panel = el('article', null, 'panel');
+    const select = el('input');
+    select.type = 'checkbox';
+    select.checked = candidate.selected;
+    const label = el('label', candidate.name, 'inline');
+    label.prepend(select);
+    select.onchange = () => { candidate.selected = select.checked; };
+    const source = el('a', candidate.source.scientificName, 'taxon-reference');
+    source.href = 'https://www.inaturalist.org/taxa/' + encodeURIComponent(candidate.source.id);
+    source.target = '_blank';
+    source.rel = 'noopener noreferrer';
+    const fields = el('dl');
+    for (const [field, value] of Object.entries(candidate.taxonomy)) {
+      fields.append(el('dt', ranks[field]), el('dd', value));
+    }
+    panel.append(label, source, fields);
+    return panel;
+  }));
+  $('taxonomy-form').hidden = !taxonomyCandidates.size;
+}
+
+$('taxonomy-open').onclick = () => $('taxonomy').showModal();
+$('taxonomy-stop').onclick = () => {
+  stopTaxonomy = true;
+  $('taxonomy-stop').disabled = true;
+};
+$('taxonomy-scan').onclick = async () => {
+  if (taxonomyBusy || !db) return;
+  taxonomyBusy = true;
+  stopTaxonomy = false;
+  const status = $('taxonomy-status');
+  const scan = $('taxonomy-scan');
+  const stop = $('taxonomy-stop');
+  const bar = $('taxonomy-progress');
+  const submit = $('taxonomy-form').querySelector('[type=submit]');
+  scan.disabled = submit.disabled = true;
+  let completed = 0;
+  let errors = 0;
+  let unmatched = 0;
+  try {
+    const current = project(await readEntries(db));
+    const fields = Object.fromEntries(Object.keys(ranks).map(field => [field, true]));
+    const animals = [...current.animals.values()].filter(animal => animal.name && Object.keys(missingTaxonomy(animal, fields)).length);
+    const queue = animals.filter(animal => !taxonomyCandidates.has(animal.id));
+    if (!queue.length) {
+      status.textContent = taxonomyCandidates.size ? '取得済みの候補を確認してください。' : '一括取得できる分類の空欄はありません。';
+      return;
+    }
+    stop.disabled = stop.hidden = bar.hidden = false;
+    bar.max = queue.length;
+    bar.value = 0;
+    for (const animal of queue) {
+      if (stopTaxonomy) break;
+      status.textContent = `${completed} / ${queue.length}件を確認 · ${animal.name}`;
+      try {
+        const result = await lookup(animal.name);
+        const taxonomy = result ? missingTaxonomy(animal, result.taxonomy) : {};
+        if (Object.keys(taxonomy).length) {
+          taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: true });
+        } else unmatched++;
+      } catch {
+        errors++;
+      }
+      bar.value = ++completed;
+    }
+    renderTaxonomyCandidates();
+    const lead = stopTaxonomy ? '検索を停止しました。' : '検索が完了しました。';
+    status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、補える候補なし ${unmatched}件、取得失敗 ${errors}件。`;
+  } catch {
+    status.textContent = '端末の記録を読み込めませんでした。';
+  } finally {
+    taxonomyBusy = false;
+    stop.hidden = true;
+    scan.disabled = submit.disabled = false;
+  }
+};
+$('taxonomy-form').onsubmit = async event => {
+  event.preventDefault();
+  if (taxonomyBusy || !db) return;
+  const selected = [...taxonomyCandidates].filter(([, candidate]) => candidate.selected)
+    .map(([id, candidate]) => [id, candidate.taxonomy]);
+  const status = $('taxonomy-status');
+  if (!selected.length) {
+    status.textContent = '保存する候補を選択してください。';
+    return;
+  }
+  taxonomyBusy = true;
+  const submit = event.currentTarget.querySelector('[type=submit]');
+  $('taxonomy-scan').disabled = submit.disabled = true;
+  try {
+    const saved = await saveTaxonomyCandidates(db, selected);
+    for (const [id] of selected) taxonomyCandidates.delete(id);
+    renderTaxonomyCandidates();
+    updates?.postMessage('changed');
+    status.textContent = `${saved}種類の分類を保存しました。`;
+    await refresh().catch(() => { status.textContent += ' 図鑑を再読み込みすると反映されます。'; });
+  } catch {
+    status.textContent = '分類を保存できませんでした。もう一度お試しください。';
+  } finally {
+    taxonomyBusy = false;
+    $('taxonomy-scan').disabled = submit.disabled = false;
+  }
+};
 
 $('backup-open').onclick = () => $('backup').showModal();
 $('download').onclick = async () => {
