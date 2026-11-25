@@ -33,6 +33,17 @@ export function lookup(name) {
   return searches.get(query);
 }
 
+function nearTaxonNames(query, term) {
+  if (query.length < 3) return false;
+  if (term.startsWith(query)) return true;
+  if (query.length < 5 || Math.abs(query.length - term.length) > 1) return false;
+  const [shorter, longer] = query.length <= term.length ? [query, term] : [term, query];
+  const mismatch = [...shorter].findIndex((character, index) => character !== longer[index]);
+  if (mismatch < 0) return true;
+  const next = mismatch + Number(shorter.length === longer.length);
+  return shorter.slice(next) === longer.slice(mismatch + 1);
+}
+
 async function lookupTaxon(query) {
   const suggest = term => taxa('/autocomplete?' + new URLSearchParams({ q: term, locale: 'ja', per_page: 20 }));
   const matchingIds = (candidates, name, normalize) => candidates.filter(taxon => taxon.is_active && (
@@ -41,12 +52,35 @@ async function lookupTaxon(query) {
   const candidates = await suggest(query);
   let ids = matchingIds(candidates, query, normalizeName);
   const variantMatch = !ids.length;
+  let nearNames = [];
   if (variantMatch && /[ぁ-ゖァ-ヺ一-龯]/.test(query)) {
     const canonical = normalizeSearchName(query);
     const variants = new Set([canonical, canonical.replaceAll('ニホン', '日本')]);
     variants.delete(query);
     const alternatives = await Promise.all([...variants].map(suggest));
     ids = matchingIds(candidates.concat(...alternatives), canonical, normalizeSearchName);
+  }
+  if (!ids.length && /[ぁ-ゖァ-ヺ一-龯]/.test(query)) {
+    const canonical = normalizeSearchName(query);
+    const parts = canonical.match(/^([^()]+)\(([^()]+)\)$/)?.slice(1) ?? [canonical];
+    const words = [...new Set(parts.flatMap(part => [part, part.replace(/^ニホン/, '')]).map(part => part.trim()))]
+      .filter(part => part.length >= 3);
+    const extra = await Promise.all(words.filter(word => word !== query).map(suggest));
+    const available = candidates.concat(...extra).filter(taxon => taxon.is_active);
+    const names = taxon => [taxon.preferred_common_name, taxon.matched_term]
+      .filter(term => /[ぁ-ゖァ-ヺ一-龯]/.test(term ?? ''));
+    for (const agrees of [
+      term => words.includes(term),
+      term => words.some(word => term === word + '属'),
+      term => words.some(word => nearTaxonNames(word, term)),
+    ]) {
+      const matches = available.flatMap(taxon => names(taxon)
+        .filter(name => agrees(normalizeSearchName(name))).map(name => ({ id: taxon.id, name })));
+      if (!matches.length) continue;
+      ids = matches.map(match => match.id);
+      nearNames = [...new Set(matches.map(match => match.name))];
+      break;
+    }
   }
   ids = [...new Set(ids)];
   if (!ids.length) return null;
@@ -68,6 +102,7 @@ async function lookupTaxon(query) {
   return {
     taxonomy,
     variantMatch,
+    nearNames,
     sources: details.map(taxon => ({ id: taxon.id, scientificName: taxon.name })),
     japaneseName: /[ぁ-ゖァ-ヺ一-龯]/.test(common) && details.every(taxon => taxon.preferred_common_name === common) ? common : '',
   };
@@ -161,7 +196,7 @@ export async function readSign(worker, file, retry, progress) {
       for (const name of candidates.slice(0, 2)) {
         try {
           const result = await lookup(name);
-          if (result && Object.keys(result.taxonomy).length) matches.push({ name, ...result });
+          if (result && !result.nearNames.length && Object.keys(result.taxonomy).length) matches.push({ name, ...result });
         } catch {
           break;
         }
