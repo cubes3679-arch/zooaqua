@@ -234,7 +234,7 @@ async function fillTaxonomy(name, controls, status) {
     status.textContent = '分類を取得できませんでした。再検索または手動入力ができます。';
   }
 }
-function showAnimal(id, saved = false) {
+function showAnimal(id, saved = false, suggestions = {}) {
   const item = view.animals.get(id);
   if (!item) return;
   const target = $('detail-content');
@@ -245,7 +245,7 @@ function showAnimal(id, saved = false) {
     photo.alt = item.name;
     target.append(photo);
   }
-  const taxonomy = taxonomyFields(item.taxonomy, item.variants);
+  const taxonomy = taxonomyFields({ ...item.taxonomy, ...suggestions }, item.variants);
   const form = el('form');
   const photo = el('input');
   photo.type = 'file';
@@ -260,6 +260,7 @@ function showAnimal(id, saved = false) {
   removal.type = 'checkbox';
   const removeLabel = el('label', '写真を削除', 'inline');
   removeLabel.prepend(removal);
+  if (Object.keys(suggestions).length) form.append(el('p', '候補を編集欄に入れました。内容を確認して保存してください。'));
   form.append(taxonomy.group, find, photoLabel);
   if (item.photo) form.append(removeLabel);
   form.append(submit, status);
@@ -709,11 +710,27 @@ function renderTaxonomyDifferences(differences) {
   $('taxonomy-differences-list').replaceChildren(...differences.map(({ animal, result, fields }) => {
     const row = el('li', null, 'panel');
     row.append(el('strong', animal.name), el('p', taxonomySourceLabel(result)));
-    const list = el('ul');
+    const list = el('div', null, 'stack');
+    const fieldsToApply = new Set();
+    const apply = button('選択した候補で編集', () => {
+      const suggestions = Object.fromEntries([...fieldsToApply].map(field => [field, result.taxonomy[field]]));
+      $('taxonomy').close();
+      showAnimal(animal.id, false, suggestions);
+    });
+    apply.disabled = true;
     for (const field of fields) {
-      list.append(el('li', `${ranks[field]}：登録「${animal.taxonomy[field]}」 → 候補「${result.taxonomy[field]}」`));
+      const check = el('input');
+      check.type = 'checkbox';
+      const label = el('label', `${ranks[field]}：登録「${animal.taxonomy[field]}」 → 候補「${result.taxonomy[field]}」`, 'inline');
+      label.prepend(check);
+      check.onchange = () => {
+        if (check.checked) fieldsToApply.add(field);
+        else fieldsToApply.delete(field);
+        apply.disabled = !fieldsToApply.size;
+      };
+      list.append(label);
     }
-    row.append(list, button('詳細を開く', () => {
+    row.append(list, apply, button('詳細を開く', () => {
       $('taxonomy').close();
       showAnimal(animal.id);
     }));
