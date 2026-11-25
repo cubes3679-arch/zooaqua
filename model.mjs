@@ -8,6 +8,13 @@ export const sources = {
 export const ranks = { group: '大分類', order: '目', family: '科', genus: '属' };
 export const types = ['動物園', '水族館'];
 export const normalizeName = value => String(value ?? '').normalize('NFKC').trim();
+export function normalizeSearchName(value) {
+  return normalizeName(value).toLowerCase()
+    .replace(/[ぁ-ゖ]/g, character => String.fromCharCode(character.charCodeAt(0) + 0x60))
+    .replaceAll('日本', 'ニホン')
+    .replaceAll('カルフォルニア', 'カリフォルニア');
+}
+
 export const key = (...parts) => JSON.stringify(parts);
 
 function canonical(value) {

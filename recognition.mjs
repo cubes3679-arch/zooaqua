@@ -1,4 +1,4 @@
-import { normalizeName } from './model.mjs';
+import { normalizeName, normalizeSearchName } from './model.mjs';
 
 const groups = {
   Mammalia: '哺乳類', Aves: '鳥類', Reptilia: '爬虫類', Amphibia: '両生類',
@@ -34,25 +34,42 @@ export function lookup(name) {
 }
 
 async function lookupTaxon(query) {
-  const candidates = await taxa('/autocomplete?' + new URLSearchParams({ q: query, locale: 'ja', per_page: 20 }));
-  const matches = candidates.filter(taxon => taxon.is_active && (
-    normalizeName(taxon.preferred_common_name) === query || normalizeName(taxon.matched_term) === query || taxon.name === query
-  ));
-  if (matches.length !== 1) return null;
-  const [taxon] = await taxa('/' + matches[0].id + '?locale=ja');
-  if (!taxon) return null;
-  const lineage = Object.fromEntries([...(taxon.ancestors ?? []), taxon].map(item => [item.rank, item]));
-  const nameOf = rank => lineage[rank]?.preferred_common_name || lineage[rank]?.name || '';
+  const suggest = term => taxa('/autocomplete?' + new URLSearchParams({ q: term, locale: 'ja', per_page: 20 }));
+  const matchingIds = (candidates, name, normalize) => candidates.filter(taxon => taxon.is_active && (
+    [taxon.preferred_common_name, taxon.matched_term, taxon.name].some(term => normalize(term) === name)
+  )).map(taxon => taxon.id);
+  const candidates = await suggest(query);
+  let ids = matchingIds(candidates, query, normalizeName);
+  const variantMatch = !ids.length;
+  if (variantMatch && /[ぁ-ゖァ-ヺ一-龯]/.test(query)) {
+    const canonical = normalizeSearchName(query);
+    const variants = new Set([canonical, canonical.replaceAll('ニホン', '日本')]);
+    variants.delete(query);
+    const alternatives = await Promise.all([...variants].map(suggest));
+    ids = matchingIds(candidates.concat(...alternatives), canonical, normalizeSearchName);
+  }
+  ids = [...new Set(ids)];
+  if (!ids.length) return null;
+  const details = await Promise.all(ids.map(async id => {
+    const results = await taxa('/' + id + '?locale=ja');
+    return results.find(taxon => taxon.id === id);
+  }));
+  if (details.some(taxon => !taxon)) throw new Error('分類候補の詳細を取得できませんでした。');
+  const lineages = details.map(taxon =>
+    Object.fromEntries([...(taxon.ancestors ?? []), taxon].map(item => [item.rank, item])));
+  const taxonomy = {};
+  for (const [field, rank] of Object.entries({ group: 'class', order: 'order', family: 'family', genus: 'genus' })) {
+    const first = lineages[0][rank];
+    if (!first?.name || !lineages.every(lineage => lineage[rank]?.name === first.name)) continue;
+    taxonomy[field] = (rank === 'class' && groups[first.name]) || first.preferred_common_name || first.name;
+  }
+  const [first] = details;
+  const common = first.preferred_common_name ?? '';
   return {
-    taxonomy: {
-      group: groups[lineage.class?.name] || nameOf('class'),
-      order: nameOf('order'),
-      family: nameOf('family'),
-      genus: nameOf('genus'),
-    },
-    source: { id: taxon.id, scientificName: taxon.name },
-    japaneseName: /[ぁ-ゖァ-ヺ一-龯]/.test(taxon.preferred_common_name ?? '')
-      ? taxon.preferred_common_name : '',
+    taxonomy,
+    variantMatch,
+    sources: details.map(taxon => ({ id: taxon.id, scientificName: taxon.name })),
+    japaneseName: /[ぁ-ゖァ-ヺ一-龯]/.test(common) && details.every(taxon => taxon.preferred_common_name === common) ? common : '',
   };
 }
 
@@ -144,7 +161,7 @@ export async function readSign(worker, file, retry, progress) {
       for (const name of candidates.slice(0, 2)) {
         try {
           const result = await lookup(name);
-          if (result) matches.push({ name, ...result });
+          if (result && Object.keys(result.taxonomy).length) matches.push({ name, ...result });
         } catch {
           break;
         }
@@ -154,8 +171,8 @@ export async function readSign(worker, file, retry, progress) {
     if (scientific) {
       try {
         const result = await lookup(scientific);
-        if (result?.japaneseName && result.source.scientificName === scientific) {
-          const existing = matches.find(match => match.source.id === result.source.id);
+        if (result?.japaneseName && result.sources.length === 1 && result.sources[0].scientificName === scientific) {
+          const existing = matches.find(match => match.sources.some(source => source.id === result.sources[0].id));
           if (!existing) matches.push({ name: result.japaneseName, ...result });
         }
       } catch {
