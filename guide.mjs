@@ -212,7 +212,8 @@ function taxonomyFields(taxonomy = {}, variants = {}) {
 function taxonomySourceLabel(result) {
   const names = result.sources.map(source => source.scientificName).join(' / ');
   const label = result.sources.length > 1 ? '複数の候補で共通する分類' : 'iNaturalistの分類候補';
-  return `${result.variantMatch ? '表記ゆれで一致 · ' : ''}${label}：${names}`;
+  const prefix = result.nearNames.length ? `近い名前：${result.nearNames.join(' / ')} · ` : result.variantMatch ? '表記ゆれで一致 · ' : '';
+  return `${prefix}${label}：${names}`;
 }
 
 async function fillTaxonomy(name, controls, status) {
@@ -668,7 +669,8 @@ function renderTaxonomyCandidates() {
     label.prepend(select);
     select.onchange = () => { candidate.selected = select.checked; };
     const sources = el('div', null, 'inline');
-    if (candidate.variantMatch) sources.append(el('span', '表記ゆれで一致'));
+    if (candidate.nearNames.length) sources.append(el('span', '近い名前：' + candidate.nearNames.join(' / ')));
+    else if (candidate.variantMatch) sources.append(el('span', '表記ゆれで一致'));
     if (candidate.sources.length > 1) sources.append(el('span', '候補に共通する分類'));
     for (const taxon of candidate.sources) {
       const source = el('a', taxon.scientificName, 'taxon-reference');
