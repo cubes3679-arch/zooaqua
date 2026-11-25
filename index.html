@@ -103,6 +103,11 @@
     <details id="taxonomy-differences" hidden>
       <summary id="taxonomy-differences-title"></summary>
       <p>登録値と検索結果を表示します。分類名の別表記も含まれます。</p>
+      <div class="inline">
+        <label class="inline"><input type="checkbox" id="taxonomy-differences-all">すべて選択</label>
+        <button type="button" id="taxonomy-save-differences" disabled>選択した差異を一括保存</button>
+      </div>
+      <p id="taxonomy-differences-status" role="status"></p>
       <ul id="taxonomy-differences-list" class="stack"></ul>
     </details>
     <form id="taxonomy-form" hidden>

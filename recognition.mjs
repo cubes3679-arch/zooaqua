@@ -134,7 +134,7 @@ export function nameCandidates(text) {
   return [...new Set(names.filter(name => !['レッドリスト', 'ワシントン', 'カテゴリー', 'データ', 'サイズ'].includes(name)))].slice(0, 12);
 }
 
-async function imageCanvas(file, limit) {
+async function imageCanvas(file, limit, contrast = false) {
   const bitmap = await createImageBitmap(file);
   try {
     const scale = Math.min(1, limit / Math.max(bitmap.width, bitmap.height));
@@ -144,6 +144,7 @@ async function imageCanvas(file, limit) {
     const context = canvas.getContext('2d', { alpha: false });
     context.fillStyle = '#fff';
     context.fillRect(0, 0, canvas.width, canvas.height);
+    if (contrast) context.filter = 'grayscale(1) contrast(1.55)';
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     return canvas;
   } finally {
@@ -175,7 +176,7 @@ export async function ocrWorker(logger) {
   const tesseract = await library;
   let timer;
   let expired = false;
-  const job = tesseract.createWorker('jpn', 1, {
+  const job = tesseract.createWorker('jpn+eng', 1, {
     workerPath: base + 'worker.min.js',
     corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0',
     logger,
@@ -196,40 +197,63 @@ export async function ocrWorker(logger) {
   }
 }
 
-export async function readSign(worker, file, retry, progress) {
-  const canvas = await imageCanvas(file, retry ? 2200 : 1500);
+async function recognizeSign(worker, file, retry) {
+  const canvas = await imageCanvas(file, retry ? 2400 : 1800, retry);
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: retry ? '11' : '3' });
-    const { data } = await worker.recognize(canvas);
-    const candidates = nameCandidates(data.text);
-    const matches = [];
-    if (candidates.length) {
-      progress('分類を照合中');
-      for (const name of candidates.slice(0, 2)) {
-        try {
-          const result = await lookup(name);
-          if (result && !result.nearNames.length && Object.keys(result.taxonomy).length) matches.push({ name, ...result });
-        } catch {
-          break;
-        }
-      }
-    }
-    const scientific = data.text.match(/\b[A-Z][a-z]{2,} [a-z]{3,}(?: [a-z]{3,})?\b/)?.[0];
-    if (scientific) {
-      try {
-        const result = await lookup(scientific);
-        if (result?.japaneseName && result.sources.length === 1 && result.sources[0].scientificName === scientific) {
-          const existing = matches.find(match => match.sources.some(source => source.id === result.sources[0].id));
-          if (!existing) matches.push({ name: result.japaneseName, ...result });
-        }
-      } catch {
-        // The user can still check the text and enter the name manually.
-      }
-    }
-    const names = [...new Set([...matches.map(match => match.name), ...candidates])];
-    return { candidates: names, text: data.text, best: matches.length === 1 ? matches[0] : null };
+    await worker.setParameters({ tessedit_pageseg_mode: retry ? '11' : '3', user_defined_dpi: '300' });
+    const { data } = await worker.recognize(canvas, { rotateAuto: true });
+    return data.text;
   } finally {
     canvas.width = 1;
     canvas.height = 1;
   }
+}
+
+export async function readSign(worker, file, retry, progress) {
+  const texts = [await recognizeSign(worker, file, retry)];
+  const checkedNames = new Set();
+  const checkedScientific = new Set();
+  const matches = [];
+  const candidates = new Set();
+  async function checkText(text) {
+    const names = nameCandidates(text);
+    names.forEach(name => candidates.add(name));
+    for (const name of names.slice(0, 3)) {
+      if (checkedNames.has(name)) continue;
+      checkedNames.add(name);
+      const result = await lookup(name).catch(() => null);
+      if (!result || result.nearNames.length || !Object.keys(result.taxonomy).length) continue;
+      const duplicate = matches.some(match => match.sources.length === result.sources.length &&
+        match.sources.every(source => result.sources.some(other => other.id === source.id)));
+      if (!duplicate) matches.push({ name, ...result });
+    }
+    const lowercaseLabels = text.split(/\r?\n/).map(line => line.trim())
+      .filter(line => /^[a-z]{3,} [a-z]{3,}(?: [a-z]{3,})?$/.test(line))
+      .map(line => line[0].toUpperCase() + line.slice(1));
+    const academicText = [text, ...lowercaseLabels].join('\n');
+    const scientificNames = [...academicText.matchAll(/\b([A-Z][a-z]{2,})[ \t]+([a-z]{3,})(?:[ \t]+([a-z]{3,}))?\b/g)]
+      .slice(0, 3).map(match => match.slice(1).filter(Boolean));
+    for (const words of scientificNames) {
+      for (const scientific of [...new Set([words.join(' '), words.slice(0, 2).join(' ')])]) {
+        if (checkedScientific.has(scientific)) continue;
+        checkedScientific.add(scientific);
+        const result = await lookup(scientific).catch(() => null);
+        if (result?.japaneseName && result.sources.length === 1 && result.sources[0].scientificName === scientific) {
+          const existing = matches.some(match => match.sources.some(source => source.id === result.sources[0].id));
+          if (!existing) matches.push({ name: result.japaneseName, ...result });
+          break;
+        }
+      }
+    }
+  }
+  progress('分類を照合中');
+  await checkText(texts[0]);
+  if (matches.length !== 1 && !retry) {
+    progress('文字を強調して再読み取り中');
+    texts.push(await recognizeSign(worker, file, true));
+    progress('再読み取り結果を照合中');
+    await checkText(texts[1]);
+  }
+  const names = [...new Set([...matches.map(match => match.name), ...candidates])];
+  return { candidates: names, text: [...new Set(texts)].join('\n\n'), best: matches.length === 1 ? matches[0] : null };
 }

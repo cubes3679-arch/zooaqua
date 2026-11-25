@@ -1,4 +1,4 @@
-import { legacyRows, sources, key, normalizeName, missingTaxonomy, project } from './model.mjs';
+import { legacyRows, sources, key, normalizeName, missingTaxonomy, project, ranks } from './model.mjs';
 
 export function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -36,10 +36,14 @@ export function saveTaxonomyCandidates(db, candidates) {
     request.onsuccess = () => {
       try {
         const { animals } = project(request.result);
-        for (const [id, offered] of candidates) {
+        for (const [id, offered, expected] of candidates) {
           const animal = animals.get(id);
           if (!animal) continue;
-          const taxonomy = missingTaxonomy(animal, offered);
+          const taxonomy = expected
+            ? Object.fromEntries(Object.keys(ranks)
+              .filter(field => Object.hasOwn(expected, field) && offered[field] && animal.taxonomy[field] === expected[field])
+              .map(field => [field, offered[field]]))
+            : missingTaxonomy(animal, offered);
           if (!Object.keys(taxonomy).length) continue;
           store.put(operation('species', { animalName: animal.name, taxonomy }));
           saved++;
