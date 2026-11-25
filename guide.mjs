@@ -60,6 +60,7 @@ function initFilters() {
     select.id = 'filter-' + id;
     select.addEventListener('change', () => {
       limit = batchSize;
+      if (id !== 'facility') updateTaxonomyFilters();
       renderGuide();
     });
     label.append(select);
@@ -70,6 +71,15 @@ function updateOptions(select, values) {
   const previous = select.value;
   select.replaceChildren(new Option('すべて', ''), ...values.map(([id, label]) => new Option(label, id)));
   if (values.some(([id]) => id === previous)) select.value = previous;
+}
+function updateTaxonomyFilters() {
+  let animals = [...view.animals.values()];
+  for (const field of Object.keys(ranks)) {
+    const select = $('filter-' + field);
+    const values = [...new Set(animals.map(item => item.taxonomy[field]).filter(Boolean))].sort(compare);
+    updateOptions(select, values.map(value => [value, value]));
+    if (select.value) animals = animals.filter(item => item.taxonomy[field] === select.value);
+  }
 }
 function renderGuide() {
   const search = normalizeName($('search').value).toLowerCase();
@@ -289,10 +299,7 @@ function showAnimal(id, saved = false) {
 async function refresh() {
   entries = await readEntries(db);
   view = project(entries);
-  for (const field of Object.keys(ranks)) {
-    const values = [...new Set([...view.animals.values()].map(item => item.taxonomy[field]).filter(Boolean))].sort(compare);
-    updateOptions($('filter-' + field), values.map(value => [value, value]));
-  }
+  updateTaxonomyFilters();
   updateOptions($('filter-facility'), [...view.facilities.values()].filter(place => place.id)
     .sort((a, b) => compare(a.name, b.name)).map(place => [place.id, place.name]));
   const expanded = new Set(nodes('#places details[open]').map(item => item.dataset.place ?? item.dataset.visit));
@@ -640,6 +647,7 @@ $('review-form').addEventListener('submit', event => {
 });
 
 const taxonomyCandidates = new Map();
+const taxonomyIssues = new Map();
 let stopTaxonomy = false;
 let taxonomyBusy = false;
 
@@ -667,6 +675,20 @@ function renderTaxonomyCandidates() {
   $('taxonomy-form').hidden = !taxonomyCandidates.size;
 }
 
+function renderTaxonomyIssues() {
+  const list = $('taxonomy-issues-list');
+  list.replaceChildren(...[...taxonomyIssues].map(([id, { name, reason }]) => {
+    const row = el('li', null, 'panel');
+    row.append(el('strong', name), el('p', reason), button('詳細を開く', () => {
+      $('taxonomy').close();
+      showAnimal(id);
+    }));
+    return row;
+  }));
+  $('taxonomy-issues').hidden = !taxonomyIssues.size;
+  $('taxonomy-issues-title').textContent = `取得できなかった分類 · ${taxonomyIssues.size}種類`;
+}
+
 $('taxonomy-open').onclick = () => $('taxonomy').showModal();
 $('taxonomy-stop').onclick = () => {
   stopTaxonomy = true;
@@ -688,10 +710,21 @@ $('taxonomy-scan').onclick = async () => {
   try {
     const current = project(await readEntries(db));
     const fields = Object.fromEntries(Object.keys(ranks).map(field => [field, true]));
-    const animals = [...current.animals.values()].filter(animal => animal.name && Object.keys(missingTaxonomy(animal, fields)).length);
-    const queue = animals.filter(animal => !taxonomyCandidates.has(animal.id));
+    const animals = [...current.animals.values()].filter(animal => animal.name && Object.keys(ranks).some(field => !animal.taxonomy[field]));
+    const eligible = new Set(animals.map(animal => animal.id));
+    for (const id of taxonomyIssues.keys()) {
+      if (!eligible.has(id)) taxonomyIssues.delete(id);
+    }
+    const queue = animals.filter(animal => {
+      if (!Object.keys(missingTaxonomy(animal, fields)).length) {
+        taxonomyIssues.set(animal.id, { name: animal.name, reason: '旧記録の分類に複数の値があります。詳細で確認してください。' });
+        return false;
+      }
+      return !taxonomyCandidates.has(animal.id);
+    });
+    renderTaxonomyIssues();
     if (!queue.length) {
-      status.textContent = taxonomyCandidates.size ? '取得済みの候補を確認してください。' : '一括取得できる分類の空欄はありません。';
+      status.textContent = taxonomyCandidates.size ? '取得済みの候補を確認してください。' : taxonomyIssues.size ? '詳細で分類を確認してください。' : '一括取得できる分類の空欄はありません。';
       return;
     }
     stop.disabled = stop.hidden = bar.hidden = false;
@@ -700,18 +733,29 @@ $('taxonomy-scan').onclick = async () => {
     for (const animal of queue) {
       if (stopTaxonomy) break;
       status.textContent = `${completed} / ${queue.length}件を確認 · ${animal.name}`;
+      let reason = '';
       try {
         const result = await lookup(animal.name);
         const taxonomy = result ? missingTaxonomy(animal, result.taxonomy) : {};
         if (Object.keys(taxonomy).length) {
           taxonomyCandidates.set(animal.id, { ...result, taxonomy, name: animal.name, selected: true });
         } else unmatched++;
+        const missing = Object.keys(ranks).filter(field => !animal.taxonomy[field] && !taxonomy[field]);
+        if (missing.length) {
+          const labels = missing.map(field => ranks[field]).join('・');
+          reason = result ? `補えなかった項目：${labels}` : `和名から分類を特定できませんでした（${labels}）。`;
+        }
       } catch {
         errors++;
+        reason = '通信または検索サービスのエラー。もう一度検索できます。';
       }
+      if (reason) taxonomyIssues.set(animal.id, { name: animal.name, reason });
+      else taxonomyIssues.delete(animal.id);
       bar.value = ++completed;
     }
     renderTaxonomyCandidates();
+    renderTaxonomyIssues();
+    if (taxonomyIssues.size && !taxonomyCandidates.size) $('taxonomy-issues').open = true;
     const lead = stopTaxonomy ? '検索を停止しました。' : '検索が完了しました。';
     status.textContent = `${lead} 候補 ${taxonomyCandidates.size}件、補える候補なし ${unmatched}件、取得失敗 ${errors}件。`;
   } catch {
